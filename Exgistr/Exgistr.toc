@@ -1,0 +1,17 @@
+## Interface: 70300
+## Title: Exgistr
+## Notes: Track your gold revenue
+## Author: Exality
+## SavedVariables: ExgistrDB
+## Version: @project-version@
+
+#Libs
+Libs/LibStub.lua
+Libs/CallbackHandler-1.0.xml
+Libs/AceGUI-3.0.xml
+
+
+init.lua
+Exgistr.lua
+EventHandler.lua
+GUI.lua
