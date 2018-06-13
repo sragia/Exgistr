@@ -146,7 +146,7 @@ function eventFunc.GARRISON_MISSION_COMPLETE_RESPONSE()
 	if lastTransaction and GetTime() - lastTransaction.time <= 0.1 then
 		Exgistr.ModifyTransaction(lastTransaction.id,"type","Mission")
 	else
-		transactionType[key] = {type = "Mission", time = GetTime(), income = true}
+		transactionType[key] = {type = "Mission", time = GetTime(), income = true, delay = 2.5}
 	end
 end
 

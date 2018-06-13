@@ -44,7 +44,7 @@ local ShortenNumber = function(number)
         affix = affix + 1
     end
     if affix > 1 then
-        dec = 2
+        dec = 3
         local num2 = num1
         while num2 >= 10 and dec > 0 do
             num2 = num2 / 10
@@ -59,13 +59,14 @@ local ShortenNumber = function(number)
 end
 
 local timeKeys = {
-	hour = {"min",":","sec"},
+	hour = {"hour",":","min"},
 	day = {"hour",":", "min"},
 	week = {"day","/", "month"},
 	month = {"day","/", "month"},
 	year = {"month","/","year"}
 }
 local timeLimits = {
+	["min"] = 60,
 	["hour"] = 3600,
 	["day"] = 86400,
 	["week"] = 604800,
@@ -544,6 +545,7 @@ function UI:DrawGraph()
 		{text = "Month", value = "month"},
 		{text = "Week", value = "week"},
 		{text = "Day", value = "day"},
+		{text = "Hour", value = "hour"}
 	}
 	local timeframedd = StdUi:Dropdown(graph,100,20,tfOpt,"month")
 	timeframedd:SetPoint("BOTTOMLEFT", graph, "TOPLEFT", 0, 5)
