@@ -1,26 +1,523 @@
 local addon = ...
 
-local AceGUI = LibStub("AceGUI-3.0")
+local function spairs(t, order)
+  -- collect the keys
+  local keys = {}
+  for k in pairs(t) do keys[#keys + 1] = k end
 
-function Exgistr.CreateTestGUI()
-	-- Create a container frame
-	local f = AceGUI:Create("Frame")
-	f:SetCallback("OnClose",function(widget) AceGUI:Release(widget) end)
-	f:SetTitle("AceGUI-3.0 Example")
-	f:SetStatusText("Status Bar")
-	f:SetLayout("Flow")
-	-- Create a button
-	local charId = Exgistr.FindCharacter("Exality","Silvermoon") -- test
-	if charId then
-		local ledgerData = Exgistr.GetLedgerData(charId)
-		for tId,data in ipairs(ledgerData) do
-			local label = AceGUI:Create("Label")
-			label:SetFullWidth(true)
-			local d = data.date
-			local sign = data.amount > 0 and "+" or "-"
-			local str = string.format("%i/%i/%i %02d:%02d   Type: %s  Amount: %s%s",d.day,d.month,d.year,d.hour,d.min,data.type,sign,GetMoneyString(math.abs(data.amount)))
-			label:SetText(str)
-			f:AddChild(label)
+  -- if order function given, sort by it by passing the table and keys a, b,
+  -- otherwise just sort the keys
+  if order then
+    table.sort(keys, function(a, b) return order(t, a, b) end)
+  else
+    table.sort(keys)
+  end
+
+  -- return the iterator function
+  local i = 0
+  return function()
+    i = i + 1
+    if keys[i] then
+      return keys[i], t[keys[i]]
+    end
+  end
+end
+
+local timeLimits = {
+	["hour"] = 3600,
+	["day"] = 86400,
+	["week"] = 604800,
+	["month"] = 18144000,
+}
+local function IsDateInLimit(dateCheck,limit)
+	local timeNow = time()
+	local dateTime = time(dateCheck)
+	if timeLimits[limit] then
+		return (timeNow - timeLimits[limit]) <= dateTime
+	end
+	return false
+end
+
+local StdUi = LibStub('StdUi'):NewInstance()
+StdUi.config = {
+    font      = {
+		familly       = [[Interface\AddOns\Aurora\media\font.ttf]], -- Font used across your addon
+		size          = 12, -- Font size
+		effect        = 'OUTLINE', -- Font effects
+		strata        = 'OVERLAY', -- Font strata
+		color         = { r = 1, g = 1, b = 1, a = 1 }, -- Font text color
+		colorDisabled = { r = 0.55, g = 0.55, b = 0.55, a = 1 }, -- Font color when widget is disabled
+	},
+	backdrop  = {
+		texture        = [[Interface\Buttons\WHITE8X8]], -- Backdrop texture
+		panel          = { r = 0.10, g = 0.10, b = 0.10, a = .7 }, -- Color of panels
+		slider         = { r = 0.15, g = 0.15, b = 0.15, a = .7 }, -- Color of sliders
+
+		button         = { r = 0.25, g = 0.25, b = 0.25, a = .7 }, -- Button color
+		buttonDisabled = { r = 0.15, g = 0.15, b = 0.15, a = .7 }, -- Button color when disabled
+
+		border         = { r = 0.16, g = 0.16, b = 0.16, a = 1 }, -- Border color
+		borderDisabled = { r = 0.16, g = 0.16, b = 0.16, a = 1 } -- Border color when disabled
+	},
+
+	highlight = {
+		color = { r = 1, g = 0.9, b = 0, a = 0.4 }, -- Highlight color
+		blank = { r = 0, g = 0, b = 0, a = 0 } -- Highlight 'off' color
+	},
+
+	dialog    = { -- Dialog settings
+		width  = 400, -- Dialogs default width
+		height = 100, -- Dialogs default height
+		button = {
+			width  = 100, -- Dialog button width
+			height = 20, -- Dialog button height
+			margin = 5 -- Dialog margin between buttons
+		}
+	},
+
+	tooltip   = {
+		padding = 10 -- Frame tooltip padding
+	}
+}
+
+local function SetMoneyString(self,money)
+	local sign = ""
+	if money < 0 then
+		sign = "-"
+	end
+		self:SetText(sign..StdUi.Util.formatMoney(math.abs(money)))
+end
+
+local function CreateMoneyText(parent,label,textSize)
+	local textLabel = StdUi:FontString(parent,label)
+	textLabel:SetFontSize(textSize)
+	local text = StdUi:FontString(parent,"")
+	text.SetMoneyString = SetMoneyString
+	text:SetFontSize(textSize)
+	return textLabel,text
+end
+
+
+local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
+
+-- char frame
+function UI:InitCharUI()
+	self.charWindow = self.charWindow or StdUi:PanelWithTitle(UI, 260, 500,'Characters')
+	local charWindow = self.charWindow
+	StdUi:GlueBefore(charWindow,self,0,0,0,0)
+	function charWindow:RefreshData()
+		local allData = Exgistr.GetCharacters()
+		local realmData = {}
+		local totalGold,realmGold = 0,0
+		local topChar = {id = 0, value = 0,realRow = 0}
+		for i,char in ipairs(allData) do
+			totalGold = totalGold + char.gold
+			if char.realm == self.selectedRealm then
+				realmGold = realmGold + char.gold
+				local row = #realmData + 1
+				topChar = topChar.value > char.gold and topChar or {id = char.id, value = char.gold, realRow = row}
+				realmData[row] = char
+			end
+		end
+		if not UI.charId then
+			UI.charId = topChar.id
+			self.charTable:SetSelection(topChar.realRow)
+		end
+		UI.realmGold = realmGold
+		UI.totalGold = totalGold
+		self.realmGold:SetText(string.format("Realm: %s", StdUi.Util.formatMoney(realmGold)))
+		self.totalGold:SetText(string.format("Total: %s", StdUi.Util.formatMoney(totalGold)))
+		self.charTable:SetData(realmData)
+		self.charTable:SortData(2) -- sort by gold
+	end
+
+	-- char table
+	local charTable = charWindow.charTable or StdUi:ScrollTable(charWindow, {{
+			name = 'Character', 
+			width = 100, 
+			align = 'CENTER', 
+			index = 'name', 
+			format = 'text', 
+			sortable = false, 
+			events = {
+				OnMouseDown = function(rowFrame, cellFrame, data, cols, row, realRow, column, table, button, ...)
+					local charId = data[realRow].id
+					self.charId = charId
+					self:RefreshData()
+				end, 
+			},
+		},
+		{
+			name = 'Gold', -- Header text
+			width = 100, -- Width of a column
+			align = 'CENTER', -- Align of text in cell (it does NOT affect header text alignment)
+			index = 'gold', -- Data index of cell
+			format = 'money', -- Defines how ScrollTable should display cells in this column - explained below 
+			sortable = false, -- If this is set to false, column will not be sortable
+			events = {
+				OnMouseDown = function(rowFrame, cellFrame, data, cols, row, realRow, column, table, button, ...)
+					local charId = data[realRow].id
+					self.charId = charId
+					self:RefreshData()
+				end, 
+			},
+		}}, 13, 20);
+	charTable.scrollFrame:SetClampedToScreen(false)
+	charTable:EnableSelection(true)
+	StdUi:GlueAcross(charTable.frame, charWindow, 10, -60, -10, 45)
+	charWindow.charTable = charTable
+
+	-- realm dropdown
+	local realms = Exgistr.GetRealms()
+	local selectedRealm
+	local options = {}
+	for realm,count in spairs(realms,function(t,a,b) return t[a] > t[b] end) do
+		if not selectedRealm then selectedRealm = realm end
+		table.insert(options,{text = realm, value = realm})
+	end
+	self.realmSelect = self.realmSelect or StdUi:Dropdown(charWindow,240,20,options,selectedRealm)
+	local realmSelect = self.realmSelect
+	StdUi:GlueTop(realmSelect,charWindow,10,-15,"LEFT")
+	charWindow.selectedRealm = selectedRealm
+	realmSelect.OnValueChanged = function(dropdown, value, text)
+		charWindow.selectedRealm = value
+		self.charId = nil
+		charWindow:RefreshData()
+		self:RefreshData()
+	end
+
+	-- Realm Gold
+	local realmString = charWindow.realmGold or StdUi:FontString(charWindow,"Realm:")
+	charWindow.realmGold = realmString
+	realmString:SetFontSize(13)
+	StdUi:GlueBottom(realmString,charWindow,10,25,'LEFT')
+
+	-- Total account gold
+	local totalString = charWindow.totalGold or StdUi:FontString(charWindow,"Total:")
+	charWindow.totalGold = totalString
+	totalString:SetFontSize(13)
+	StdUi:GlueBottom(totalString,charWindow,10,10,'LEFT')
+
+	-- refresh Data
+	charWindow:RefreshData()
+end
+
+-- Character Panel
+function UI:DrawCharacterPanel()
+	self.charPanel = self.charPanel or StdUi:Panel(self,330,100)
+	local charPanel = self.charPanel
+	StdUi:GlueTop(charPanel,self,10,-20,'LEFT')
+	-- Char Name
+	local charName = charPanel.charName or StdUi:FontString(charPanel,"Name")
+	charPanel.charName = charName
+	charName:SetFontSize(25)
+	StdUi:GlueTop(charName,charPanel,10,-10,'LEFT')
+	-- Current Gold
+	local currGoldLabel,currGold = CreateMoneyText(charPanel,"Current Gold:",13)
+	charPanel.currGold = currGold
+	StdUi:GlueTop(currGoldLabel,charName,0,-30,'LEFT')
+	StdUi:GlueAfter(currGold,currGoldLabel,5,0,5,0)
+	-- Made Last Week
+	local goldLastWeekLabel,goldLastWeek = CreateMoneyText(charPanel,"Gold This Week:",13)
+	charPanel.goldLastWeek = goldLastWeek
+	StdUi:GlueTop(goldLastWeekLabel,currGoldLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldLastWeek,goldLastWeekLabel,5,0,5,0)
+	-- Made Last Month
+	local goldLastMonthLabel,goldLastMonth = CreateMoneyText(charPanel,"Gold This Month:",13)
+	charPanel.goldLastMonth = goldLastMonth
+	StdUi:GlueTop(goldLastMonthLabel,goldLastWeekLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldLastMonth,goldLastMonthLabel,5,0,5,0)
+	-- TEST
+	currGold:SetMoneyString(123456)
+	goldLastWeek:SetMoneyString(123456)
+	goldLastMonth:SetMoneyString(123456)
+end
+
+-- Totals for character
+function UI:DrawCharTotalPanel()
+	self.totalPanel = self.totalPanel or StdUi:Panel(self,330,100)
+	local totalPanel = self.totalPanel
+	StdUi:GlueBelow(totalPanel,self.charPanel,0,-5,'LEFT')
+	-- TOTALS
+	local totalsString = StdUi:FontString(totalPanel,"Character Totals")
+	totalsString:SetFontSize(25)
+	StdUi:GlueTop(totalsString,totalPanel,10,-10,'LEFT')
+	-- Expense Total
+	local expenseTotalLabel,expenseTotal = CreateMoneyText(totalPanel,"Expense:",13)
+	totalPanel.expenseTotal = expenseTotal
+	StdUi:GlueTop(expenseTotalLabel,totalsString,0,-30,'LEFT')
+	StdUi:GlueAfter(expenseTotal,expenseTotalLabel,5,0,5,0)
+	-- Income Total
+	local incomeTotalLabel,incomeTotal = CreateMoneyText(totalPanel,"Income:",13)
+	totalPanel.incomeTotal = incomeTotal
+	StdUi:GlueTop(incomeTotalLabel,expenseTotalLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(incomeTotal,incomeTotalLabel,5,0,5,0)
+	-- Profit Total
+	local profitTotalLabel,profitTotal = CreateMoneyText(totalPanel,"Profit:",13)
+	totalPanel.profitTotal = profitTotal
+	StdUi:GlueTop(profitTotalLabel,incomeTotalLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(profitTotal,profitTotalLabel,5,0,5,0)
+end
+
+-- Totals for Account
+function UI:DrawAccountTotalPanel()
+	self.acctotalPanel = self.acctotalPanel or StdUi:Panel(self,330,100)
+	local acctotalPanel = self.acctotalPanel
+	StdUi:GlueAfter(acctotalPanel,self.charPanel,5,0)
+	-- TOTALS
+	local acctotalsString = StdUi:FontString(acctotalPanel,"Account Totals")
+	acctotalsString:SetFontSize(25)
+	StdUi:GlueTop(acctotalsString,acctotalPanel,10,-10,'LEFT')
+	-- Current Gold
+	local currGoldLabel,currGold = CreateMoneyText(acctotalPanel,"Current Gold:",13)
+	acctotalPanel.currGold = currGold
+	StdUi:GlueTop(currGoldLabel,acctotalsString,0,-30,'LEFT')
+	StdUi:GlueAfter(currGold,currGoldLabel,5,0,5,0)
+	-- Made Last Week
+	local goldLastWeekLabel,goldLastWeek = CreateMoneyText(acctotalPanel,"Gold This Week:",13)
+	acctotalPanel.goldLastWeek = goldLastWeek
+	StdUi:GlueTop(goldLastWeekLabel,currGoldLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldLastWeek,goldLastWeekLabel,5,0,5,0)
+	-- Made Last Month
+	local goldAvgLabel,goldAvg = CreateMoneyText(acctotalPanel,"Average per Day :",13)
+	acctotalPanel.goldAvg = goldAvg
+	StdUi:GlueTop(goldAvgLabel,goldLastWeekLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldAvg,goldAvgLabel,5,0,5,0)
+end
+
+-- Totals for Realm
+function UI:DrawRealmTotalPanel()
+	self.realmtotalPanel = self.realmtotalPanel or StdUi:Panel(self,330,100)
+	local realmtotalPanel = self.realmtotalPanel
+	StdUi:GlueBelow(realmtotalPanel,self.acctotalPanel,0,-5,'LEFT')
+	-- TOTALS
+	local realmtotalsString = StdUi:FontString(realmtotalPanel,"Realm Totals")
+	realmtotalsString:SetFontSize(25)
+	StdUi:GlueTop(realmtotalsString,realmtotalPanel,10,-10,'LEFT')
+	-- Current Gold
+	local currGoldLabel,currGold = CreateMoneyText(realmtotalPanel,"Current Gold:",13)
+	realmtotalPanel.currGold = currGold
+	StdUi:GlueTop(currGoldLabel,realmtotalsString,0,-30,'LEFT')
+	StdUi:GlueAfter(currGold,currGoldLabel,5,0,5,0)
+	-- Made Last Week
+	local goldLastWeekLabel,goldLastWeek = CreateMoneyText(realmtotalPanel,"Gold Last Week:",13)
+	realmtotalPanel.goldLastWeek = goldLastWeek
+	StdUi:GlueTop(goldLastWeekLabel,currGoldLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldLastWeek,goldLastWeekLabel,5,0,5,0)
+	-- Made Last Month
+	local goldAvgLabel,goldAvg = CreateMoneyText(realmtotalPanel,"Average per Day :",13)
+	realmtotalPanel.goldAvg = goldAvg
+	StdUi:GlueTop(goldAvgLabel,goldLastWeekLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldAvg,goldAvgLabel,5,0,5,0)
+end
+
+-- GRAPH (WIP)
+function UI:DrawGraph()
+	self.graph = self.graph or StdUi:Panel(self,330,100)
+	local graph = self.graph
+	graph:SetPoint("TOPLEFT",self.realmtotalPanel,"BOTTOMLEFT",0,-40)
+	graph:SetPoint("BOTTOMRIGHT",self.table.frame,"BOTTOMRIGHT",340,0)
+	local TMPgraph = StdUi:Label(graph,"GRAPH WIP",30)
+	TMPgraph:SetPoint("CENTER", graph, 0, 0)
+	-- GRAPH: timeframe (dropdown)
+	local tfOpt = {
+		{text = "Month", value = "month"},
+		{text = "Week", value = "week"},
+		{text = "Day", value = "day"},
+	}
+	local timeframedd = StdUi:Dropdown(graph,100,20,tfOpt,"month")
+	timeframedd:SetPoint("BOTTOMLEFT", graph, "TOPLEFT", 0, 5)
+	graph.timeframe = timeframedd
+	-- GRAPH: select char (dropdown)
+	local scOpt = {
+		{text = "All", value = "all"},
+		{text = "Exality", value = "Exality-Silvermoon"},
+		{text = "Byatch", value = "Byatch-Silvermoon"},
+	}
+	local selectChardd = StdUi:Dropdown(graph,100,20,scOpt,"all")
+	selectChardd:SetPoint("BOTTOMRIGHT", graph, "TOPRIGHT", 0, 5)
+	graph.selectedCharacter = selectChardd
+end
+
+-- Ledger table
+function UI:DrawLedgerTable()
+	self.table = self.table or StdUi:ScrollTable(self, {
+			{
+				name = 'Source',
+				width = 100,
+				align = 'LEFT',
+				index = 'type',
+				format = 'text',
+				sortable = false,
+			},
+			{
+				name = 'Date',
+				width = 100,
+				align = 'LEFT',
+				index = 'date',
+				format = 'text',
+				sortable = false,
+				compareSort = function(self,rowA,rowB,sortBy)
+					local a = self:GetRow(rowA)
+					local b = self:GetRow(rowB)
+					local column = self.cols[sortBy]
+					local direction = column.sort or column.defaultSort or 'asc';
+					if direction:lower() == 'asc' then
+						return a.dateTime > b.dateTime
+					else
+						return a.dateTime < b.dateTime
+					end
+				end
+			},
+			{	name = 'Amount',
+				width = 100,
+				align = 'LEFT',
+				index = 'amount',
+				format = 'money',
+				sortable = false,
+			},}, 9, 20);
+	local maintable = self.table
+	maintable.scrollFrame:SetClampedToScreen(false)
+	StdUi:GlueAcross(maintable.frame, self, 10, -290, -360, 10)
+	-- BUTTONS
+	local expenseBtn,incomeBtn
+	-- Button: Income
+	incomeBtn = StdUi:Button(maintable.frame,60,20,"Income")
+	incomeBtn:SetPoint("BOTTOMLEFT", maintable.frame, "TOPLEFT", 0, 30)
+	incomeBtn:SetScript("OnClick", function(self) 
+			UI.ledgerTab = "income" 
+			self:SetBackdropColor(0.47,0.44,0,1)
+			StdUi:ApplyBackdrop(expenseBtn)
+			UI:RefreshData()
+		end)
+	incomeBtn:SetBackdropColor(0.47,0.44,0,1)
+	-- Button: Expense
+	expenseBtn = StdUi:Button(maintable.frame,60,20,"Expense")
+	expenseBtn:SetPoint("BOTTOMLEFT", incomeBtn, "BOTTOMRIGHT", 5, 0)
+	expenseBtn:SetScript("OnClick", function(self) 
+			UI.ledgerTab = "expense" 
+			self:SetBackdropColor(0.47,0.44,0,1)
+			StdUi:ApplyBackdrop(incomeBtn)
+			UI:RefreshData()
+		end)
+	self.ledgerTab = "income" -- default
+	-- Dropdown: Type Select
+	local selectTypedd = StdUi:Dropdown(maintable.frame,100,20,Exgistr.defaultSources ,"All")
+	maintable.filterSource = "All"
+	selectTypedd:SetPoint("BOTTOMRIGHT", maintable.frame, "TOPRIGHT", 0, 30)
+	selectTypedd.OnValueChanged = function(dropdown, value, text)
+		maintable.filterSource = value
+		UI:RefreshData()
+	end
+	maintable.selectedtype = selectTypedd
+end
+
+
+function UI:InitMainWindow()
+	self:DrawCharacterPanel()
+	self:DrawCharTotalPanel()
+	self:DrawAccountTotalPanel()
+	self:DrawLedgerTable()
+	self:DrawAccountTotalPanel()
+	self:DrawRealmTotalPanel()
+	self:DrawGraph()
+end
+
+function UI:RefreshData()
+	if self.charId then
+		local charData = Exgistr.GetCharacter(self.charId)
+		local expenses,income,lastWeek,lastMonth = 0,0,0,0
+
+		-- Ledger Table
+		local ledgerData = charData.ledger
+		local filterSource = self.table.filterSource
+		local data = {}
+		for tId,d in ipairs(ledgerData) do
+			--
+			if d.amount < 0 then
+				expenses = expenses + math.abs(d.amount)
+				if self.ledgerTab == "expense" and (filterSource == d.type or filterSource == "All") then
+					table.insert(data,{type = d.type,dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Expense", amount = math.abs(d.amount)})
+				end
+			else
+				if self.ledgerTab == "income" and (filterSource == d.type or filterSource == "All") then
+					table.insert(data,{type = d.type, dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Income", amount = d.amount})
+				end
+				income = income + d.amount
+			end
+			-- 
+			if IsDateInLimit(d.date,"week") then
+				lastWeek = lastWeek + d.amount
+				lastMonth = lastMonth + d.amount
+			elseif IsDateInLimit(d.date,"month") then
+				lastMonth = lastMonth + d.amount
+			end
+		end
+		self.table:SetData(data)
+		self.table:SortData(2)
+		-- Character Panel
+		local charPanel = self.charPanel
+		local r,g,b = GetClassColor(charData.class)
+		charPanel.charName:SetText(charData.name)
+		charPanel.charName:SetTextColor(r, g, b, 1)
+		charPanel.currGold:SetMoneyString(charData.current)
+		charPanel.goldLastWeek:SetMoneyString(lastWeek)
+		charPanel.goldLastMonth:SetMoneyString(lastMonth)
+		-- TOTALS
+		local totalPanel = self.totalPanel
+		totalPanel.expenseTotal:SetMoneyString(expenses)
+		totalPanel.incomeTotal:SetMoneyString(income)
+		totalPanel.profitTotal:SetMoneyString(income-expenses)
+	end
+	local allData = Exgistr.GetCharacterLedgers()
+	local accThisWeek,realmThisWeek = 0,0
+	local accTotal,realmTotal = 0,0
+	local selectedRealm = self.charWindow.selectedRealm or GetRealmName()
+	for realm,ledgers in pairs(allData) do
+		for i,l in ipairs(ledgers) do
+			if IsDateInLimit(l.date,"week") then
+				if realm == selectedRealm then
+					realmThisWeek = realmThisWeek + l.amount
+				end
+				accThisWeek = accThisWeek + l.amount
+			end
+
+			if realm == selectedRealm then
+				realmTotal = realmTotal + l.amount
+			end
+			accTotal = accTotal + l.amount
 		end
 	end
+
+	local initTime = Exgistr.GetInitTime()
+	local timeNow = time()
+	local days = math.ceil((timeNow - initTime)/86400)
+	local avgTotal = accTotal / days
+	local avgRealm = realmTotal / days
+	self.acctotalPanel.currGold:SetMoneyString(self.totalGold)
+	self.acctotalPanel.goldLastWeek:SetMoneyString(accThisWeek)
+	self.acctotalPanel.goldAvg:SetMoneyString(avgTotal)
+	self.realmtotalPanel.currGold:SetMoneyString(self.realmGold)
+	self.realmtotalPanel.goldLastWeek:SetMoneyString(realmThisWeek)
+	self.realmtotalPanel.goldAvg:SetMoneyString(avgRealm)
+
 end
+
+function Exgistr.InitUI()
+	UI:SetPoint('CENTER',0,0)
+	UI:InitCharUI()
+	UI:InitMainWindow()
+	UI:SetFrameStrata("HIGH")
+	UI:Hide()
+end
+
+function Exgistr.ShowUI()
+	UI.charWindow:RefreshData()
+	UI:RefreshData()
+	UI:Show()
+end
+
+function Exgistr.HideUI()
+	UI:Hide()
+end
+

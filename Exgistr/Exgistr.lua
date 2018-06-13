@@ -8,6 +8,7 @@ local CHAR_ROW_DEFAULT = {
 		class = "",
 		ledger = {},
 		current = 0,
+		startData = {},
 	}
 }
 local LEDGER_ROW_DEFAULT = {
@@ -68,7 +69,7 @@ end
 function Exgistr.SetupCharacter()
 	local realm = GetRealmName()
 	local name = UnitName("player")
-	local class = UnitClass("player")
+	local _,class = UnitClass("player")
 	local id = FindCharacter(name,realm)
 	if not id then
 		-- first time seeing this character
@@ -77,10 +78,46 @@ function Exgistr.SetupCharacter()
 			realm = realm,
 			class = class,
 			ledger = {},
-			current = Exgistr.CurrentMoney
+			current = Exgistr.CurrentMoney,
+			startData = {
+				gold = Exgistr.CurrentMoney,
+				date = date("*t", time())
+			},
 		})
+	elseif db[id].current ~= Exgistr.CurrentMoney then
+		Exgistr.AddTransaction({
+				amount = Exgistr.CurrentMoney-db[id].current,
+				type = "Unknown",
+				date = date("*t", time()),
+			})
+		db[id].current = Exgistr.CurrentMoney
 	end
 end
+
+local function compare(current,target,operator)
+	if not current or not target then return false end
+	operator = operator or "<"
+	local ret = loadstring(string.format("return %f %s %f", current,operator,target))
+	return ret()
+end
+
+function Exgistr.SelectLedgerData(charId,filter)
+	-- filter = {
+	--	key = "", value = "", compare = ">",
+	-- }
+	local ret = {}
+	for i,data in ipairs(db[charId].ledger) do
+		if data[filter.key] then
+			if filter.key == "date" and compare(time(data[filter.key]),filter.value,filter.compare) then
+				table.insert(ret,data)
+			elseif  compare(data[filter.key],filter.value,filter.compare) then
+				table.insert(ret,data)
+			end
+		end
+	end 
+	return ret
+end
+
 
 -- LEDGER
 function Exgistr.AddTransaction(t,name,realm)
@@ -92,10 +129,11 @@ function Exgistr.AddTransaction(t,name,realm)
 		local tId = #db[id].ledger+1
 		db[id].ledger[tId] = t
 		db[id].current = db[id].current + t.amount
-		Exgistr.debug.print("Adding",tId,"row | Type",t.type)
+		Exgistr.debug.print("Adding row| Id:",tId," | Source:",t.type)
 		Exgistr.CurrentMoney = db[id].current
 		return tId
 	end
+	Exgistr.debug.print('failed Add')
 end
 
 function Exgistr.ModifyTransaction(id,key,newValue)
@@ -107,7 +145,42 @@ end
 function Exgistr.GetLedgerData(id)
 	return db[id].ledger
 end
+function Exgistr.GetCharacterLedgers()
+	local ret = {}
+	for id,char in pairs(db) do
+		ret[char.realm] = ret[char.realm] or {}
+		for i,l in ipairs(char.ledger) do
+			table.insert(ret[char.realm],l)
+		end
+	end
+	return ret
+end
+-- GUI
+function Exgistr.GetCharacters(realm)
+	local t = {}
+	for id,char in pairs(db) do
+		if not realm or realm == char.realm then
+			table.insert(t,{name = char.name,class= char.class, gold = char.current, id = id, realm = char.realm})
+		end
+	end
+	return t
+end
 
+function Exgistr.GetRealms()
+	local t = {}
+	for id,char in pairs(db) do
+		t[char.realm] = t[char.realm] and t[char.realm] + 1 or 1
+	end
+	return t
+end
+function Exgistr.GetCharacter(id)
+	if not id or not db[id] then return end
+	return db[id]
+end
+
+function Exgistr.GetInitTime()
+	return Exgistr.config.initTime
+end
 -- DB SETUP
 local function CheckDB()
 	-- validates DB
