@@ -36,21 +36,15 @@ local function ClearTransactionVars()
 end
 
 local function GetTransactionType(diff)
-	local t = transactionType
 	for key,trans in pairs(transactionType) do
 		if GetTime() - trans.time <= (trans.delay or 1.5) then
 			if trans.expense and diff < 0 then
-				t[key] = nil
 				return trans.type
 			elseif trans.income and diff > 0 then
-				t[key] = nil
 				return trans.type
 			end
-		else
-			t[key] = nil
 		end
 	end
-	transactionType = t
 	return diff > 0 and "Looted" or "Unknown"
 end
 

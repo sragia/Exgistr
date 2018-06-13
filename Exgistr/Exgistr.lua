@@ -106,15 +106,29 @@ function Exgistr.SelectLedgerData(charId,filter)
 	--	key = "", value = "", compare = ">",
 	-- }
 	local ret = {}
-	for i,data in ipairs(db[charId].ledger) do
-		if data[filter.key] then
-			if filter.key == "date" and compare(time(data[filter.key]),filter.value,filter.compare) then
-				table.insert(ret,data)
-			elseif  compare(data[filter.key],filter.value,filter.compare) then
-				table.insert(ret,data)
-			end
+	if charId == "all" then
+		for id,char in pairs(db) do
+			for i,data in ipairs(char.ledger) do
+				if data[filter.key] then
+					if filter.key == "date" and compare(time(data[filter.key]),filter.value,filter.compare) then
+						table.insert(ret,data)
+					elseif filter.key ~= "date" and compare(data[filter.key],filter.value,filter.compare) then
+						table.insert(ret,data)
+					end
+				end
+			end 
 		end
-	end 
+	else
+		for i,data in ipairs(db[charId].ledger) do
+			if data[filter.key] then
+				if filter.key == "date" and compare(time(data[filter.key]),filter.value,filter.compare) then
+					table.insert(ret,data)
+				elseif filter.key ~= "date" and compare(data[filter.key],filter.value,filter.compare) then
+					table.insert(ret,data)
+				end
+			end
+		end 
+	end
 	return ret
 end
 

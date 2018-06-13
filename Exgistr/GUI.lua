@@ -22,7 +22,49 @@ local function spairs(t, order)
     end
   end
 end
+local ShortenNumber = function(number)
+    if type(number) ~= "number" then
+        number = tonumber(number)
+    end
+    if not number then
+        return
+    end
+    local affixes = {
+        "",
+        "k",
+        "m",
+        "b",
+        "t",
+    }
+    local affix = 1
+    local dec = 0
+    local num1 = math.abs(number)
+    while num1 >= 1000 and affix < #affixes do
+        num1 = num1 / 1000
+        affix = affix + 1
+    end
+    if affix > 1 then
+        dec = 2
+        local num2 = num1
+        while num2 >= 10 and dec > 0 do
+            num2 = num2 / 10
+            dec = dec - 1
+        end
+    end
+    if number < 0 then
+        num1 = -num1
+    end
+    
+    return string.format("%."..dec.."f"..affixes[affix], num1)
+end
 
+local timeKeys = {
+	hour = {"min",":","sec"},
+	day = {"hour",":", "min"},
+	week = {"day","/", "month"},
+	month = {"day","/", "month"},
+	year = {"month","/","year"}
+}
 local timeLimits = {
 	["hour"] = 3600,
 	["day"] = 86400,
@@ -36,6 +78,17 @@ local function IsDateInLimit(dateCheck,limit)
 		return (timeNow - timeLimits[limit]) <= dateTime
 	end
 	return false
+end
+
+local function TimeAgo(timePast)
+	local timeNow = time()
+	local ret = {
+		min = math.floor((timeNow - timePast)/ 60),
+		hours = math.floor((timeNow - timePast)/ 3600),
+		days = math.floor((timeNow - timePast)/ 86400),
+		months = math.floor((timeNow - timePast)/ 18144000),
+	}
+	return ret
 end
 
 local StdUi = LibStub('StdUi'):NewInstance()
@@ -55,7 +108,10 @@ StdUi.config = {
 
 		button         = { r = 0.25, g = 0.25, b = 0.25, a = .7 }, -- Button color
 		buttonDisabled = { r = 0.15, g = 0.15, b = 0.15, a = .7 }, -- Button color when disabled
-
+		line           = { r = 1,    g = 1, b = 1, a = .4},
+		lineBorder	   = { r = 1, g  = 1, b = 1, a = .4 },
+		graphBg = { r = 1, g = 1, b = 1, a = .05	},
+		graphBgBorder = { r = 1, g = 1, b = 1, a = 0},
 		border         = { r = 0.16, g = 0.16, b = 0.16, a = 1 }, -- Border color
 		borderDisabled = { r = 0.16, g = 0.16, b = 0.16, a = 1 } -- Border color when disabled
 	},
@@ -97,6 +153,18 @@ local function CreateMoneyText(parent,label,textSize)
 	return textLabel,text
 end
 
+local function CreateLine(parent,thickness)
+	local line = CreateFrame("Frame",nil,parent)
+	line:SetPoint("CENTER")
+	line:SetSize(1,1)
+	line.line = line:CreateLine(nil,"HIGH",nil,-5)
+	local l = line.line
+	l:SetTexture([[Interface\Buttons\WHITE8X8]])
+	l:SetVertexColor(1, 1, 1, 1)
+	l:SetAlpha(1)
+	l:SetThickness(thickness)
+  return line
+end
 
 local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
 
@@ -317,8 +385,160 @@ function UI:DrawGraph()
 	local graph = self.graph
 	graph:SetPoint("TOPLEFT",self.realmtotalPanel,"BOTTOMLEFT",0,-40)
 	graph:SetPoint("BOTTOMRIGHT",self.table.frame,"BOTTOMRIGHT",340,0)
-	local TMPgraph = StdUi:Label(graph,"GRAPH WIP",30)
-	TMPgraph:SetPoint("CENTER", graph, 0, 0)
+	graph.warning = StdUi:Label(graph,"",30)
+	graph.warning:SetPoint("CENTER",graph,0,0)
+	-- Background
+	graph.bg = {}
+	for i=1,5 do
+		local f = StdUi:Frame(graph,31,40)
+		graph.bg[i] = f
+		f:SetPoint("BOTTOMLEFT", graph, "BOTTOMLEFT", 41.5+(i-1)*63, 20)
+		f:SetPoint("TOPRIGHT",graph, "TOPLEFT", 73+(i-1)*63, -10)
+		StdUi:ApplyBackdrop(f,"graphBg","graphBgBorder")
+	end
+	-- timeStrings
+	graph.timeStrings = {}
+	for i=1,5 do
+		local label = StdUi:Label(graph,"06/02",10)
+		label:SetPoint("TOP", graph.bg[i], "BOTTOM", 0, -5)
+		graph.timeStrings[i] = label
+	end
+	-- Seperating Lines
+	graph.seplines = {}
+	for i=1,5 do
+		local line = StdUi:Frame(graph,310,1)
+		graph.seplines[i] = line
+		line:SetPoint("BOTTOMLEFT", graph, "BOTTOMLEFT", 10, 20+(45*(i-1)))
+		line:SetPoint("BOTTOMRIGHT", graph, "BOTTOMRIGHT", -10, 20+(45*(i-1)))
+		StdUi:ApplyBackdrop(line,"line","lineBorder")
+		line:SetAlpha(0.7)
+		-- label
+		local lineLabel = StdUi:Label(line,"123k",10)
+		line.label = lineLabel
+		lineLabel:SetPoint("BOTTOMLEFT", line, "TOPLEFT", 0, 2)
+	end
+
+	-- GraphLines
+	graph.lines = {}
+	for i=1,10 do
+		local line = CreateLine(graph,2)
+		line.line:SetVertexColor(1, 242/255, 9/255, 1)
+		graph.lines[i] = line
+	end
+
+	function graph:Update(data)
+		--[[
+			data = {
+				min = number,
+				max = number,
+				values = table with 10 values
+				dates = table with 5 values
+			}
+		]]
+		if not data then 
+			self.warning:SetText("NO DATA")
+			return 
+		end
+		self.warning:SetText("")
+		local step = (data.max - data.min) / 4
+		for i=1,5 do
+			self.seplines[i].label:SetText(ShortenNumber(data.min + (i-1) * step))
+		end
+		local v = data.values
+		-- 180 vert
+		local pixelValue = (data.max - data.min) / 180
+		local startPoint = (v[1] - data.min)/pixelValue
+		local endPoint = (v[2]-v[1])/pixelValue
+		self.lines[1].line:SetStartPoint("BOTTOMLEFT",graph,10,20+startPoint)
+		self.lines[1].line:SetEndPoint("BOTTOMLEFT",graph,10+31.5,20+startPoint+endPoint)
+		local anchorPoint = endPoint < 0 and "BOTTOMRIGHT" or "TOPRIGHT"
+		for i=2,10 do
+			local nextValue = v[i+1] or v[i]
+			local currValue = v[i] or 0
+			endPoint = (nextValue-currValue)/pixelValue
+			self.lines[i].line:SetStartPoint(anchorPoint,self.lines[i-1].line,0,0)
+			self.lines[i].line:SetEndPoint(anchorPoint,self.lines[i-1].line,31.5,endPoint)
+			anchorPoint = endPoint < 0 and "BOTTOMRIGHT" or "TOPRIGHT"
+		end
+		for i=1,5 do
+			self.timeStrings[i]:SetText(data.dates[i])
+		end
+	end
+
+	function graph:Clear()
+		for i=1,10 do
+			self.lines[i].line:SetStartPoint("BOTTOMLEFT",graph,0,0)
+			self.lines[i].line:SetEndPoint("BOTTOMLEFT",graph,0,0)
+		end
+		for i=1,5 do
+			self.seplines[i].label:SetText("")
+		end
+		for i=1,5 do
+			self.timeStrings[i]:SetText("")
+		end
+		self.warning:SetText("NO DATA")
+	end
+
+	function graph:RefreshData()
+		self.selectedTimeFrame = self.selectedTimeFrame or "month"
+		self.selectedCharacter = self.selectedCharacter or "all"
+		local timekeys = timeKeys[self.selectedTimeFrame]
+		local unitGold = 0
+		if self.selectedCharacter == "all" then
+			unitGold = UI.totalGold
+		else
+			local char = Exgistr.GetCharacter(self.selectedCharacter)
+			unitGold = char.current
+		end
+		local updateTable = {values = {}, dates = {}}
+		local dateNow = date("*t", time())
+		updateTable.dates[5] = string.format("%02d%s%02d",dateNow[timekeys[1]],timekeys[2],dateNow[timekeys[3]])
+		updateTable.max = unitGold / 10000
+		updateTable.values[10] = unitGold / 10000
+		updateTable.values[9] = unitGold / 10000
+		updateTable.min = updateTable.values[9]
+		-- Select Data
+		local timeLimit = timeLimits[self.selectedTimeFrame]
+		local timeMin = time() - timeLimit
+		local ledgerData = Exgistr.SelectLedgerData(self.selectedCharacter,{key = "date",value = timeMin, compare = ">"})
+		if #ledgerData <= 0 then
+			self:Clear()
+			return
+		end
+		table.sort(ledgerData,function(a,b) return time(a.date) > time(b.date) end)
+		-- Filter Data
+		local idx = 1
+		local timeCurr = time()
+		local elapsedTime = timeCurr - time(ledgerData[#ledgerData].date)
+		local timeStep = elapsedTime / 8
+		for i=1,4 do 
+			local timeDate = date("*t",timeCurr-timeStep*i*2) 
+			updateTable.dates[5-i] = string.format("%02d%s%02d",timeDate[timekeys[1]],timekeys[2],timeDate[timekeys[3]])
+		end
+		for i,data in ipairs(ledgerData) do
+			local ledgeTime = time(data.date)
+			if ledgeTime > (timeCurr - timeStep*idx) then
+				updateTable.values[10-idx] = updateTable.values[10-idx] - data.amount / 10000
+				updateTable.min = updateTable.min > updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.min
+				updateTable.max = updateTable.max < updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.max
+			else
+				for b = idx+1,10 do
+					if ledgeTime > (timeCurr - timeStep*b) then
+						idx = b
+						updateTable.values[10-idx] = updateTable.values[10 - idx + 1] - data.amount / 10000
+						updateTable.min = updateTable.min > updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.min
+						updateTable.max = updateTable.max < updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.max
+						break;
+					else
+						updateTable.values[10-b] = updateTable.values[10 - b + 1]
+					end
+				end
+			end
+			if idx >= 10 then break end -- KMS hack
+		end
+		self:Update(updateTable)
+	end
+
 	-- GRAPH: timeframe (dropdown)
 	local tfOpt = {
 		{text = "Month", value = "month"},
@@ -327,16 +547,28 @@ function UI:DrawGraph()
 	}
 	local timeframedd = StdUi:Dropdown(graph,100,20,tfOpt,"month")
 	timeframedd:SetPoint("BOTTOMLEFT", graph, "TOPLEFT", 0, 5)
+	graph.selectedTimeFrame = "month"
+	timeframedd.OnValueChanged = function(dropdown, value, text)
+		graph.selectedTimeFrame = value
+		graph:RefreshData()
+	end
 	graph.timeframe = timeframedd
 	-- GRAPH: select char (dropdown)
+	local characters = Exgistr.GetCharacters()
 	local scOpt = {
-		{text = "All", value = "all"},
-		{text = "Exality", value = "Exality-Silvermoon"},
-		{text = "Byatch", value = "Byatch-Silvermoon"},
+		{text = "All", value = "all"}
 	}
+	table.sort(characters,function(a,b) return a.gold > b.gold end)
+	for _,char in ipairs(characters) do
+		table.insert(scOpt,{text = char.name, value = char.id})
+	end
 	local selectChardd = StdUi:Dropdown(graph,100,20,scOpt,"all")
 	selectChardd:SetPoint("BOTTOMRIGHT", graph, "TOPRIGHT", 0, 5)
-	graph.selectedCharacter = selectChardd
+	selectChardd.OnValueChanged = function(dropdown, value, text)
+		graph.selectedCharacter = value
+		graph:RefreshData()
+	end
+	graph.charSelect = selectChardd
 end
 
 -- Ledger table
@@ -500,7 +732,7 @@ function UI:RefreshData()
 	self.realmtotalPanel.currGold:SetMoneyString(self.realmGold)
 	self.realmtotalPanel.goldLastWeek:SetMoneyString(realmThisWeek)
 	self.realmtotalPanel.goldAvg:SetMoneyString(avgRealm)
-
+	self.graph:RefreshData()
 end
 
 function Exgistr.InitUI()
