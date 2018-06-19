@@ -4,7 +4,7 @@ Exgistr = {
 }
 -- debug
 Exgistr.debug = {
-	enabled = true,
+	enabled = false,
 	label = "|cffeef441[Exgistr]|r",
 	print = function(...)
 		if Exgistr.debug.enabled then
@@ -22,7 +22,8 @@ Exgistr.defaultSources = {
 	{text = "Auction", value = "Auction"},
 	{text = "Trade", value = "Trade"},
 	{text = "Looted", value = "Looted"}, -- kinda implemented
-	{text = "Quest", value = "Quest"} 
+	{text = "Quest", value = "Quest"},
+	{text = "Mail", value = "Mail"},
 }
 
 SLASH_CHAREXG1, SLASH_CHAREXG2 = '/EXG', '/Exgistr'; -- 3.

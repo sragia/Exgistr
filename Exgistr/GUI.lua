@@ -22,6 +22,7 @@ local function spairs(t, order)
     end
   end
 end
+
 local ShortenNumber = function(number)
     if type(number) ~= "number" then
         number = tonumber(number)
@@ -95,7 +96,7 @@ end
 local StdUi = LibStub('StdUi'):NewInstance()
 StdUi.config = {
     font      = {
-		familly       = [[Interface\AddOns\Aurora\media\font.ttf]], -- Font used across your addon
+		familly       = [[Interface\AddOns\Exgistr\Media\font.ttf]], -- Font used across your addon
 		size          = 12, -- Font size
 		effect        = 'OUTLINE', -- Font effects
 		strata        = 'OVERLAY', -- Font strata
@@ -173,7 +174,7 @@ local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
 function UI:InitCharUI()
 	self.charWindow = self.charWindow or StdUi:PanelWithTitle(UI, 260, 500,'Characters')
 	local charWindow = self.charWindow
-	StdUi:GlueBefore(charWindow,self,0,0,0,0)
+	StdUi:GlueBefore(charWindow,self,1,0,1,0)
 	function charWindow:RefreshData()
 		local allData = Exgistr.GetCharacters()
 		local realmData = {}
@@ -330,7 +331,7 @@ end
 
 -- Totals for Account
 function UI:DrawAccountTotalPanel()
-	self.acctotalPanel = self.acctotalPanel or StdUi:Panel(self,330,100)
+	self.acctotalPanel = self.acctotalPanel or StdUi:Panel(self,335,100)
 	local acctotalPanel = self.acctotalPanel
 	StdUi:GlueAfter(acctotalPanel,self.charPanel,5,0)
 	-- TOTALS
@@ -356,7 +357,7 @@ end
 
 -- Totals for Realm
 function UI:DrawRealmTotalPanel()
-	self.realmtotalPanel = self.realmtotalPanel or StdUi:Panel(self,330,100)
+	self.realmtotalPanel = self.realmtotalPanel or StdUi:Panel(self,335,100)
 	local realmtotalPanel = self.realmtotalPanel
 	StdUi:GlueBelow(realmtotalPanel,self.acctotalPanel,0,-5,'LEFT')
 	-- TOTALS
@@ -739,6 +740,8 @@ end
 
 function Exgistr.InitUI()
 	UI:SetPoint('CENTER',0,0)
+	UI.closeBtn:ClearAllPoints()
+	UI.closeBtn:SetPoint("TOPRIGHT", UI, "TOPRIGHT", -2, -2)
 	UI:InitCharUI()
 	UI:InitMainWindow()
 	UI:SetFrameStrata("HIGH")

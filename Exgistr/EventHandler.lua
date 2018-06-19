@@ -26,6 +26,8 @@ f:RegisterEvent("GARRISON_MISSION_COMPLETE_RESPONSE")
 f:RegisterEvent("AUCTION_ITEM_LIST_UPDATE")
 f:RegisterEvent("QUEST_FINISHED")
 f:RegisterEvent("QUEST_REMOVED")
+f:RegisterEvent("MAIL_SEND_SUCCESS")
+f:RegisterEvent("MAIL_SUCCESS")
 local eventFunc = {}
 local lastTransaction
 local transactionType = {}
@@ -172,6 +174,26 @@ end
 function  eventFunc.QUEST_REMOVED()
 	local key = "QUEST_REMOVED"
 	local type = "Quest"
+	if lastTransaction and GetTime() - lastTransaction.time <= 0.1 then
+		Exgistr.ModifyTransaction(lastTransaction.id,"type",type)
+	else
+		transactionType[key] = {type = type, time = GetTime(), income = true}
+	end
+end
+
+function  eventFunc.MAIL_SEND_SUCCESS()
+	local key = "MAIL_SEND_SUCCESS"
+	local type = "Mail"
+	if lastTransaction and GetTime() - lastTransaction.time <= 0.1 then
+		Exgistr.ModifyTransaction(lastTransaction.id,"type",type)
+	else
+		transactionType[key] = {type = type, time = GetTime(), expense = true}
+	end
+end
+
+function  eventFunc.MAIL_SUCCESS()
+	local key = "MAIL_SUCCESS"
+	local type = "Mail"
 	if lastTransaction and GetTime() - lastTransaction.time <= 0.1 then
 		Exgistr.ModifyTransaction(lastTransaction.id,"type",type)
 	else
