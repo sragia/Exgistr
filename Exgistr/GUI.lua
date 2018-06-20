@@ -496,9 +496,9 @@ function UI:DrawGraph()
 		local dateNow = date("*t", time())
 		updateTable.dates[5] = string.format("%02d%s%02d",dateNow[timekeys[1]],timekeys[2],dateNow[timekeys[3]])
 		updateTable.max = unitGold / 10000
+		updateTable.values[11] = unitGold / 10000
 		updateTable.values[10] = unitGold / 10000
-		updateTable.values[9] = unitGold / 10000
-		updateTable.min = updateTable.values[9]
+		updateTable.min = updateTable.values[10]
 		-- Select Data
 		local timeLimit = timeLimits[self.selectedTimeFrame]
 		local timeMin = time() - timeLimit
@@ -512,7 +512,7 @@ function UI:DrawGraph()
 		local idx = 1
 		local timeCurr = time()
 		local elapsedTime = timeCurr - time(ledgerData[#ledgerData].date)
-		local timeStep = elapsedTime / 8
+		local timeStep = elapsedTime / 9
 		for i=1,4 do 
 			local timeDate = date("*t",timeCurr-timeStep*i*2) 
 			updateTable.dates[5-i] = string.format("%02d%s%02d",timeDate[timekeys[1]],timekeys[2],timeDate[timekeys[3]])
@@ -520,23 +520,23 @@ function UI:DrawGraph()
 		for i,data in ipairs(ledgerData) do
 			local ledgeTime = time(data.date)
 			if ledgeTime > (timeCurr - timeStep*idx) then
-				updateTable.values[10-idx] = updateTable.values[10-idx] - data.amount / 10000
-				updateTable.min = updateTable.min > updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.min
-				updateTable.max = updateTable.max < updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.max
+				updateTable.values[11-idx] = updateTable.values[11-idx] - data.amount / 10000
+				updateTable.min = updateTable.min > updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.min
+				updateTable.max = updateTable.max < updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.max
 			else
-				for b = idx+1,10 do
+				for b = idx+1,11 do
 					if ledgeTime > (timeCurr - timeStep*b) then
 						idx = b
-						updateTable.values[10-idx] = updateTable.values[10 - idx + 1] - data.amount / 10000
-						updateTable.min = updateTable.min > updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.min
-						updateTable.max = updateTable.max < updateTable.values[10-idx] and updateTable.values[10-idx] or updateTable.max
+						updateTable.values[11-idx] = updateTable.values[11 - idx + 1] - data.amount / 10000
+						updateTable.min = updateTable.min > updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.min
+						updateTable.max = updateTable.max < updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.max
 						break;
 					else
-						updateTable.values[10-b] = updateTable.values[10 - b + 1]
+						updateTable.values[11-b] = updateTable.values[11 - b + 1]
 					end
 				end
 			end
-			if idx >= 10 then break end -- KMS hack
+			--if idx >= 10 then break end -- KMS hack
 		end
 		self:Update(updateTable)
 	end
