@@ -9,7 +9,7 @@ function StdUi:Window(parent, title, width, height)
 	parent = parent or UIParent;
 	local frame = self:PanelWithTitle(parent, width, height, title);
 	frame.titlePanel.isWidget = false;
-	self:MakeDraggable(frame, frame.titlePanel);
+	self:MakeDraggable(frame); -- , frame.titlePanel
 	self:LayoutConfig(frame, 20);
 
 	local closeBtn = self:Button(frame, 16, 16, 'X');
@@ -73,7 +73,7 @@ function StdUi:Confirm(title, message, buttons, dialogId)
 	if buttons and not window.buttons then
 		window.buttons = {};
 
-		local btnCount = StdUi.Util.tableCount(buttons);
+		local btnCount = self.Util.tableCount(buttons);
 
 		local btnMargin = self.config.dialog.button.margin;
 		local btnWidth = self.config.dialog.button.width;

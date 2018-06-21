@@ -4,18 +4,6 @@ if not StdUi then
 	return;
 end
 
-function StdUi:SetTextColor(fontString, colorType)
-	colorType = colorType or 'color';
-	if fontString.SetTextColor then
-		fontString:SetTextColor(
-			self.config.font[colorType].r,
-			self.config.font[colorType].g,
-			self.config.font[colorType].b,
-			self.config.font[colorType].a
-		);
-	end
-end
-
 --- @return FontString
 function StdUi:FontString(parent, text, inherit)
 	local this = self;
@@ -55,7 +43,7 @@ function StdUi:AddLabel(parent, object, text, labelPosition, labelWidth)
 		self:GlueRight(label, object, 4, 0);
 	else -- labelPosition == 'LEFT'
 		label:SetWidth(labelWidth or label:GetStringWidth())
-		self:GlueLeft(label, object, 4, 0);
+		self:GlueLeft(label, object, -4, 0);
 	end
 
 	object.label = label;

@@ -6,6 +6,7 @@
 	<Script file="StdUiPosition.lua"/>
 	<Script file="StdUiUtil.lua"/>
 	<Script file="StdUiLayout.lua"/>
+	<Script file="StdUiGrid.lua"/>
 	<!--Widgets-->
 	<Script file="widgets\Basic.lua"/>
 	<Script file="widgets\Window.lua"/>
@@ -19,4 +20,7 @@
 	<Script file="widgets\Slider.lua"/>
 	<Script file="widgets\Tooltip.lua"/>
 	<Script file="widgets\Table.lua"/>
+	<Script file="widgets\ProgressBar.lua"/>
+	<Script file="widgets\ColorPicker.lua"/>
+	<Script file="widgets\Tab.lua"/>
 </Ui>

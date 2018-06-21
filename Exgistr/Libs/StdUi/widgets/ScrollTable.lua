@@ -150,8 +150,7 @@ local methods = {
 				local cell = row.cols[j];
 				if not cell then
 					cell = CreateFrame('Button', nil, row);
-					cell.text = row:CreateFontString(nil, 'OVERLAY', 'GameFontHighlightSmall');
-
+					cell.text = StdUi:FontString(cell, '');
 					row.cols[j] = cell;
 
 					local align = self.cols[j].align or 'LEFT';
@@ -368,7 +367,7 @@ local methods = {
 	end,
 
 	-------------------------------------------------------------
-	--- Highlight Methods
+	--- Selection Methods
 	-------------------------------------------------------------
 
 	--- Turn on or off selection on a table according to flag. Will not refresh the table display.
@@ -434,7 +433,7 @@ local methods = {
 	end,
 
 	-------------------------------------------------------------
-	--- Drawing Methods
+	--- Update Internal Methods
 	-------------------------------------------------------------
 
 	--- Cell update function used to paint each cell.  Can be overridden in column data or table data.
@@ -449,7 +448,7 @@ local methods = {
 			local val = rowData[idx];
 
 			if type(format) == 'function' then
-				cellFrame.text:SetText(format(data, cols, realRow, column, table));
+				cellFrame.text:SetText(format(val, rowData, cols[column]));
 			elseif (format == 'money') then
 				val = StdUi.Util.formatMoney(val);
 				cellFrame.text:SetText(val);
@@ -644,7 +643,6 @@ local methods = {
 		end
 	end,
 };
-
 local cellEvents = {
 	OnEnter = function(rowFrame, cellFrame, data, cols, row, realRow, column, table, ...)
 		table:SetHighLightColor(rowFrame, table:GetDefaultHighlight());

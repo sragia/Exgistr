@@ -98,6 +98,7 @@ StdUi.config = {
     font      = {
 		familly       = [[Interface\AddOns\Exgistr\Media\font.ttf]], -- Font used across your addon
 		size          = 12, -- Font size
+		titleSize     = 12, 
 		effect        = 'OUTLINE', -- Font effects
 		strata        = 'OVERLAY', -- Font strata
 		color         = { r = 1, g = 1, b = 1, a = 1 }, -- Font text color
@@ -105,8 +106,8 @@ StdUi.config = {
 	},
 	backdrop  = {
 		texture        = [[Interface\Buttons\WHITE8X8]], -- Backdrop texture
-		panel          = { r = 0.10, g = 0.10, b = 0.10, a = .7 }, -- Color of panels
-		slider         = { r = 0.15, g = 0.15, b = 0.15, a = .7 }, -- Color of sliders
+		panel          = { r = 0, g = 0, b = 0, a = .7 }, -- Color of panels
+		slider         = { r = 0, g =0, b = 0, a = .7 }, -- Color of sliders
 
 		button         = { r = 0.25, g = 0.25, b = 0.25, a = .7 }, -- Button color
 		buttonDisabled = { r = 0.15, g = 0.15, b = 0.15, a = .7 }, -- Button color when disabled
@@ -169,11 +170,15 @@ local function CreateLine(parent,thickness)
 end
 
 local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
+UI.titlePanel:ClearAllPoints()
+UI.titlePanel:SetPoint("BOTTOM", UI, "TOP", 0, -10)
 
 -- char frame
 function UI:InitCharUI()
-	self.charWindow = self.charWindow or StdUi:PanelWithTitle(UI, 260, 500,'Characters')
+	self.charWindow = self.charWindow or StdUi:PanelWithTitle(UI, 260, 500,'Characters',100,20)
 	local charWindow = self.charWindow
+	charWindow.titlePanel:ClearAllPoints()
+	charWindow.titlePanel:SetPoint("BOTTOM", charWindow, "TOP", 0, -10)
 	StdUi:GlueBefore(charWindow,self,1,0,1,0)
 	function charWindow:RefreshData()
 		local allData = Exgistr.GetCharacters()
@@ -231,7 +236,7 @@ function UI:InitCharUI()
 					self:RefreshData()
 				end, 
 			},
-		}}, 13, 20);
+		}}, 13, 20)
 	charTable.scrollFrame:SetClampedToScreen(false)
 	charTable:EnableSelection(true)
 	StdUi:GlueAcross(charTable.frame, charWindow, 10, -60, -10, 45)
@@ -381,7 +386,7 @@ function UI:DrawRealmTotalPanel()
 	StdUi:GlueAfter(goldAvg,goldAvgLabel,5,0,5,0)
 end
 
--- GRAPH (WIP)
+-- GRAPH 
 function UI:DrawGraph()
 	self.graph = self.graph or StdUi:Panel(self,330,100)
 	local graph = self.graph
@@ -389,29 +394,35 @@ function UI:DrawGraph()
 	graph:SetPoint("BOTTOMRIGHT",self.table.frame,"BOTTOMRIGHT",340,0)
 	graph.warning = StdUi:Label(graph,"",30)
 	graph.warning:SetPoint("CENTER",graph,0,0)
+	local lineCount = 16
+	local verticalLines = 7
+	local graphHeight = 180 -- shouldnt change
+	local graphWidth = 315  -- shouldnt change
+	local lineWidth = graphWidth/lineCount
 	-- Background
 	graph.bg = {}
-	for i=1,5 do
+	local bgCount = math.floor(lineCount/2)
+	for i=1,bgCount do
 		local f = StdUi:Frame(graph,31,40)
 		graph.bg[i] = f
-		f:SetPoint("BOTTOMLEFT", graph, "BOTTOMLEFT", 41.5+(i-1)*63, 20)
-		f:SetPoint("TOPRIGHT",graph, "TOPLEFT", 73+(i-1)*63, -10)
+		f:SetPoint("BOTTOMLEFT", graph, "BOTTOMLEFT", 10+lineWidth+(i-1)*lineWidth*2,20)--   41.5+(i-1)*63, 20)
+		f:SetPoint("TOPRIGHT",graph, "TOPLEFT",10+2*lineWidth+(i-1)*2*lineWidth,-10)-- 73+(i-1)*63, -10)
 		StdUi:ApplyBackdrop(f,"graphBg","graphBgBorder")
 	end
 	-- timeStrings
 	graph.timeStrings = {}
-	for i=1,5 do
+	for i=1,bgCount do
 		local label = StdUi:Label(graph,"06/02",10)
 		label:SetPoint("TOP", graph.bg[i], "BOTTOM", 0, -5)
 		graph.timeStrings[i] = label
 	end
 	-- Seperating Lines
 	graph.seplines = {}
-	for i=1,5 do
+	for i=1,verticalLines do
 		local line = StdUi:Frame(graph,310,1)
 		graph.seplines[i] = line
-		line:SetPoint("BOTTOMLEFT", graph, "BOTTOMLEFT", 10, 20+(45*(i-1)))
-		line:SetPoint("BOTTOMRIGHT", graph, "BOTTOMRIGHT", -10, 20+(45*(i-1)))
+		line:SetPoint("BOTTOMLEFT", graph, "BOTTOMLEFT", 10,20+((graphHeight/(verticalLines-1))*(i-1)))-- 20+(45*(i-1)))
+		line:SetPoint("BOTTOMRIGHT", graph, "BOTTOMRIGHT", -10,20+((graphHeight/(verticalLines-1))*(i-1))) --20+(45*(i-1)))
 		StdUi:ApplyBackdrop(line,"line","lineBorder")
 		line:SetAlpha(0.7)
 		-- label
@@ -422,7 +433,7 @@ function UI:DrawGraph()
 
 	-- GraphLines
 	graph.lines = {}
-	for i=1,10 do
+	for i=1,lineCount do
 		local line = CreateLine(graph,2)
 		line.line:SetVertexColor(1, 242/255, 9/255, 1)
 		graph.lines[i] = line
@@ -442,40 +453,40 @@ function UI:DrawGraph()
 			return 
 		end
 		self.warning:SetText("")
-		local step = (data.max - data.min) / 4
-		for i=1,5 do
+		local step = (data.max - data.min) / (verticalLines-1)
+		for i=1,verticalLines do
 			self.seplines[i].label:SetText(ShortenNumber(data.min + (i-1) * step))
 		end
 		local v = data.values
 		-- 180 vert
-		local pixelValue = (data.max - data.min) / 180
+		local pixelValue = (data.max - data.min) / graphHeight
 		local startPoint = (v[1] - data.min)/pixelValue
 		local endPoint = (v[2]-v[1])/pixelValue
 		self.lines[1].line:SetStartPoint("BOTTOMLEFT",graph,10,20+startPoint)
-		self.lines[1].line:SetEndPoint("BOTTOMLEFT",graph,10+31.5,20+startPoint+endPoint)
+		self.lines[1].line:SetEndPoint("BOTTOMLEFT",graph,10+lineWidth,20+startPoint+endPoint)
 		local anchorPoint = endPoint < 0 and "BOTTOMRIGHT" or "TOPRIGHT"
-		for i=2,10 do
+		for i=2,lineCount do
 			local nextValue = v[i+1] or v[i]
 			local currValue = v[i] or 0
 			endPoint = (nextValue-currValue)/pixelValue
 			self.lines[i].line:SetStartPoint(anchorPoint,self.lines[i-1].line,0,0)
-			self.lines[i].line:SetEndPoint(anchorPoint,self.lines[i-1].line,31.5,endPoint)
+			self.lines[i].line:SetEndPoint(anchorPoint,self.lines[i-1].line,lineWidth,endPoint)
 			anchorPoint = endPoint < 0 and "BOTTOMRIGHT" or "TOPRIGHT"
 		end
-		for i=1,5 do
+		for i=1,bgCount do
 			self.timeStrings[i]:SetText(data.dates[i])
 		end
 	end
 
 	function graph:Clear()
-		for i=1,10 do
+		for i=1,lineCount do
 			self.lines[i].line:SetStartPoint("BOTTOMLEFT",graph,0,0)
 			self.lines[i].line:SetEndPoint("BOTTOMLEFT",graph,0,0)
 		end
-		for i=1,5 do
+		for i=1,verticalLines do
 			self.seplines[i].label:SetText("")
 		end
-		for i=1,5 do
+		for i=1,bgCount do
 			self.timeStrings[i]:SetText("")
 		end
 		self.warning:SetText("NO DATA")
@@ -486,6 +497,7 @@ function UI:DrawGraph()
 		self.selectedCharacter = self.selectedCharacter or "all"
 		local timekeys = timeKeys[self.selectedTimeFrame]
 		local unitGold = 0
+		local pointCount = lineCount + 1
 		if self.selectedCharacter == "all" then
 			unitGold = UI.totalGold
 		else
@@ -494,11 +506,11 @@ function UI:DrawGraph()
 		end
 		local updateTable = {values = {}, dates = {}}
 		local dateNow = date("*t", time())
-		updateTable.dates[5] = string.format("%02d%s%02d",dateNow[timekeys[1]],timekeys[2],dateNow[timekeys[3]])
+		updateTable.dates[bgCount] = string.format("%02d%s%02d",dateNow[timekeys[1]],timekeys[2],dateNow[timekeys[3]])
 		updateTable.max = unitGold / 10000
-		updateTable.values[11] = unitGold / 10000
-		updateTable.values[10] = unitGold / 10000
-		updateTable.min = updateTable.values[10]
+		updateTable.values[pointCount] = unitGold / 10000
+		updateTable.values[pointCount - 1] = unitGold / 10000
+		updateTable.min = updateTable.values[pointCount - 1]
 		-- Select Data
 		local timeLimit = timeLimits[self.selectedTimeFrame]
 		local timeMin = time() - timeLimit
@@ -512,27 +524,27 @@ function UI:DrawGraph()
 		local idx = 1
 		local timeCurr = time()
 		local elapsedTime = timeCurr - time(ledgerData[#ledgerData].date)
-		local timeStep = elapsedTime / 9
-		for i=1,4 do 
+		local timeStep = elapsedTime / (pointCount - 2)
+		for i=1,bgCount-1 do 
 			local timeDate = date("*t",timeCurr-timeStep*i*2) 
-			updateTable.dates[5-i] = string.format("%02d%s%02d",timeDate[timekeys[1]],timekeys[2],timeDate[timekeys[3]])
+			updateTable.dates[bgCount-i] = string.format("%02d%s%02d",timeDate[timekeys[1]],timekeys[2],timeDate[timekeys[3]])
 		end
 		for i,data in ipairs(ledgerData) do
 			local ledgeTime = time(data.date)
 			if ledgeTime > (timeCurr - timeStep*idx) then
-				updateTable.values[11-idx] = updateTable.values[11-idx] - data.amount / 10000
-				updateTable.min = updateTable.min > updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.min
-				updateTable.max = updateTable.max < updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.max
+				updateTable.values[pointCount-idx] = updateTable.values[pointCount-idx] - data.amount / 10000
+				updateTable.min = updateTable.min > updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.min
+				updateTable.max = updateTable.max < updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.max
 			else
-				for b = idx+1,11 do
+				for b = idx+1,pointCount do
 					if ledgeTime > (timeCurr - timeStep*b) then
 						idx = b
-						updateTable.values[11-idx] = updateTable.values[11 - idx + 1] - data.amount / 10000
-						updateTable.min = updateTable.min > updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.min
-						updateTable.max = updateTable.max < updateTable.values[11-idx] and updateTable.values[11-idx] or updateTable.max
+						updateTable.values[pointCount-idx] = updateTable.values[pointCount - idx + 1] - data.amount / 10000
+						updateTable.min = updateTable.min > updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.min
+						updateTable.max = updateTable.max < updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.max
 						break;
 					else
-						updateTable.values[11-b] = updateTable.values[11 - b + 1]
+						updateTable.values[pointCount-b] = updateTable.values[pointCount - b + 1]
 					end
 				end
 			end

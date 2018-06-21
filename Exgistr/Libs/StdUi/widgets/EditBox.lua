@@ -11,7 +11,6 @@ function StdUi:SimpleEditBox(parent, width, height, text)
 	self:InitWidget(editBox);
 
 	editBox:SetTextInsets(3, 3, 3, 3);
-	editBox:SetMaxLetters(256);
 	editBox:SetFont(self.config.font.familly, self.config.font.size, self.config.font.effect);
 	editBox:SetAutoFocus(false);
 
@@ -27,7 +26,7 @@ function StdUi:SimpleEditBox(parent, width, height, text)
 		editBox:SetText(text);
 	end
 
-	self:ApplyDisabledBackdrop(editBox);
+	self:HookDisabledBackdrop(editBox);
 	self:ApplyBackdrop(editBox);
 	self:SetObjSize(editBox, width, height);
 
@@ -37,7 +36,7 @@ end
 function StdUi:SearchEditBox(parent, width, height, placeholderText)
 	local editBox = self:SimpleEditBox(parent, width, height, '');
 
-	local icon = self:Texture(editBox, 20, 20, [[Interface\Common\UI-Searchbox-Icon]]);
+	local icon = self:Texture(editBox, 14, 14, [[Interface\Common\UI-Searchbox-Icon]]);
 	icon:SetVertexColor(
 		self.config.font.colorDisabled.r,
 		self.config.font.colorDisabled.g,
@@ -49,7 +48,7 @@ function StdUi:SearchEditBox(parent, width, height, placeholderText)
 	StdUi:SetTextColor(label, 'colorDisabled');
 
 	self:GlueLeft(icon, editBox, 5, 0, true);
-	self:GlueRight(label, icon, 5, 0);
+	self:GlueRight(label, icon, 2, 0);
 
 	editBox.placeholder = {
 		icon = icon,
@@ -75,6 +74,17 @@ function StdUi:EditBox(parent, width, height, text, validator)
 
 	local editBox = self:SimpleEditBox(parent, width, height, text);
 
+	function editBox:GetValue()
+		return self.value;
+	end;
+
+	function editBox:SetValue(value)
+		self.value = value;
+		self:SetText(value);
+		self:Validate();
+		self.button:Hide();
+	end;
+
 	function editBox:IsValid()
 		return self.isValid;
 	end;
@@ -83,13 +93,20 @@ function StdUi:EditBox(parent, width, height, text, validator)
 		self.isValidated = true;
 		self.isValid = validator(self);
 
-		if self.OnValueChanged then
-			self.OnValueChanged(self);
+		if self.isValid then
+			if self.button then
+				self.button:Hide();
+			end
+
+			if self.OnValueChanged and tostring(self.lastValue) ~= tostring(self.value) then
+				self:OnValueChanged();
+				self.lastValue = self.value;
+			end
 		end
 		self.isValidated = false;
 	end;
 
-	local button = self:Button(editBox, 40, height - 4, 'OK');
+	local button = self:Button(editBox, 40, height - 4, OKAY);
 	button:SetPoint('RIGHT', -2, 0);
 	button:Hide();
 	button.editBox = editBox;
@@ -105,11 +122,12 @@ function StdUi:EditBox(parent, width, height, text, validator)
 
 	editBox:SetScript('OnTextChanged', function(self, isUserInput)
 		local value = StdUi.Util.stripColors(self:GetText());
-		if tostring(value) ~= tostring(self.lastValue) then
-			self.lastValue = value;
+		if tostring(value) ~= tostring(self.value) then
 			if not self.isValidated and self.button and isUserInput then
 				self.button:Show();
 			end
+		else
+			self.button:Hide();
 		end
 	end);
 
@@ -122,17 +140,6 @@ function StdUi:NumericBox(parent, width, height, text, validator)
 	local editBox = self:EditBox(parent, width, height, text, validator);
 	editBox:SetNumeric(true);
 
-	function editBox:GetValue()
-		return self.value;
-	end;
-
-	function editBox:SetValue(value)
-		self.value = value;
-		self:SetText(value);
-		self:Validate();
-		self.button:Hide();
-	end;
-
 	function editBox:SetMaxValue(value)
 		self.maxValue = value;
 		self:Validate();
@@ -143,6 +150,12 @@ function StdUi:NumericBox(parent, width, height, text, validator)
 		self:Validate();
 	end;
 
+	function editBox:SetMinMaxValue(min, max)
+		self.minValue = min;
+		self.maxValue = max;
+		self:Validate();
+	end
+
 	return editBox;
 end
 
@@ -151,10 +164,6 @@ function StdUi:MoneyBox(parent, width, height, text, validator)
 
 	local editBox = self:EditBox(parent, width, height, text, validator);
 	editBox:SetMaxLetters(20);
-
-	function editBox:GetValue()
-		return self.value;
-	end;
 
 	local formatMoney = StdUi.Util.formatMoney;
 	function editBox:SetValue(value)
@@ -168,24 +177,48 @@ function StdUi:MoneyBox(parent, width, height, text, validator)
 	return editBox;
 end
 
-function StdUi:EditBoxWithLabel(parent, width, height, text, label, labelPosition, labelWidth)
-	local editBox = self:EditBox(parent, width, height, text);
-	self:AddLabel(parent, editBox, label, labelPosition, labelWidth);
+function StdUi:MultiLineBox(parent, width, height, text)
+	local editBox = CreateFrame('EditBox');
+	local panel, scrollFrame = self:ScrollFrame(parent, width, height, editBox);
+	self:ApplyBackdrop(panel, 'button');
 
-	return editBox;
-end
+	editBox:SetWidth(scrollFrame:GetWidth());
+	--editBox:SetHeight(scrollFrame:GetHeight());
 
+	editBox:SetTextInsets(3, 3, 3, 3);
+	editBox:SetFont(self.config.font.familly, self.config.font.size, self.config.font.effect);
+	editBox:SetAutoFocus(false);
+	editBox:SetScript('OnEscapePressed', editBox.ClearFocus);
+	editBox:SetMultiLine(true);
+	editBox:EnableMouse(true);
+	editBox:SetAutoFocus(false);
+	editBox:SetCountInvisibleLetters(false);
+	--editBox:SetAllPoints();
 
-function StdUi:NumericBoxWithLabel(parent, width, height, text, label, labelPosition, labelWidth)
-	local editBox = self:NumericBox(parent, width, height, text);
-	self:AddLabel(parent, editBox, label, labelPosition, labelWidth);
+	editBox.scrollFrame = scrollFrame;
+	editBox.panel = panel;
 
-	return editBox;
-end
+	editBox:SetScript('OnCursorChanged', function (self, _, y, _, cursorHeight)
+		local sf, y = self.scrollFrame, -y;
+		local offset = sf:GetVerticalScroll();
 
-function StdUi:MoneyBoxWithLabel(parent, width, height, text, label, labelPosition, labelWidth)
-	local editBox = self:MoneyBox(parent, width, height, text);
-	self:AddLabel(parent, editBox, label, labelPosition, labelWidth);
+		if y < offset then
+			sf:SetVerticalScroll(y);
+		else
+			y = y + cursorHeight - sf:GetHeight() + 6; --text insets
+			if y > offset then
+				sf:SetVerticalScroll(math.ceil(y));
+			end
+		end
+	end)
+
+	scrollFrame:HookScript('OnVerticalScroll', function(self, offset)
+		self.scrollChild:SetHitRectInsets(0, 0, offset, self.scrollChild:GetHeight() - offset - self:GetHeight());
+	end);
+
+	if text then
+		editBox:SetText(text);
+	end
 
 	return editBox;
 end

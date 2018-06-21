@@ -4,7 +4,7 @@ if not StdUi then
 	return;
 end
 
-function StdUi:Checkbox(parent, text, tooltip, width, height)
+function StdUi:Checkbox(parent, text, width, height)
 	local checkbox = CreateFrame('CheckButton', nil, parent, 'UICheckButtonTemplate'); --, 'ChatConfigCheckButtonTemplate'
 	self:InitWidget(checkbox);
 	StdUi:StripTextures(checkbox);
@@ -27,8 +27,6 @@ function StdUi:Checkbox(parent, text, tooltip, width, height)
 
 	self:GlueRight(checkbox.text, checkbox, 5, 0);
 
-	checkbox.tooltip = tooltip;
-
-	self:ApplyDisabledBackdrop(checkbox);
+	self:HookDisabledBackdrop(checkbox);
 	return checkbox;
 end
