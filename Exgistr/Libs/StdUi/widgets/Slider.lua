@@ -65,7 +65,7 @@ function StdUi:StyleScrollBar(scrollBar)
 
 	scrollBar.thumb = StdUi:Panel(scrollBar);
 	scrollBar.thumb:SetAllPoints(scrollBar:GetThumbTexture());
-	StdUi:ApplyBackdrop(scrollBar.thumb, 'button');
+	self:ApplyBackdrop(scrollBar.thumb, 'button');
 end
 
 function StdUi:Slider(parent, width, height, value, vertical, min, max)
@@ -90,7 +90,7 @@ function StdUi:Slider(parent, width, height, value, vertical, min, max)
 
 	slider.thumb = StdUi:Frame(slider);
 	slider.thumb:SetAllPoints(slider:GetThumbTexture());
-	StdUi:ApplyBackdrop(slider.thumb, 'button');
+	self:ApplyBackdrop(slider.thumb, 'button');
 
 	if vertical then
 		slider:SetOrientation('VERTICAL');

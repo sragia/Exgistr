@@ -9,7 +9,7 @@ StdUi.config = {};
 function StdUi:ResetConfig()
 	self.config = {
 		font      = {
-			familly       = [[Interface\AddOns\Exgistr\Media\font.ttf]],
+			familly       = [[Fonts\FRIZQT__.ttf]],
 			size          = 12,
 			titleSize     = 16,
 			effect        = 'NONE',
@@ -62,4 +62,3 @@ function StdUi:SetDefaultFont(font, size, effect, strata)
 	self.config.font.effect = effect;
 	self.config.font.strata = strata;
 end
-

@@ -239,7 +239,7 @@ function UI:InitCharUI()
 		}}, 13, 20)
 	charTable.scrollFrame:SetClampedToScreen(false)
 	charTable:EnableSelection(true)
-	StdUi:GlueAcross(charTable.frame, charWindow, 10, -60, -10, 45)
+	StdUi:GlueAcross(charTable, charWindow, 10, -60, -10, 45)
 	charWindow.charTable = charTable
 
 	-- realm dropdown
@@ -391,7 +391,7 @@ function UI:DrawGraph()
 	self.graph = self.graph or StdUi:Panel(self,330,100)
 	local graph = self.graph
 	graph:SetPoint("TOPLEFT",self.realmtotalPanel,"BOTTOMLEFT",0,-40)
-	graph:SetPoint("BOTTOMRIGHT",self.table.frame,"BOTTOMRIGHT",340,0)
+	graph:SetPoint("BOTTOMRIGHT",self.table,"BOTTOMRIGHT",340,0)
 	graph.warning = StdUi:Label(graph,"",30)
 	graph.warning:SetPoint("CENTER",graph,0,0)
 	local lineCount = 16
@@ -625,12 +625,12 @@ function UI:DrawLedgerTable()
 			},}, 9, 20);
 	local maintable = self.table
 	maintable.scrollFrame:SetClampedToScreen(false)
-	StdUi:GlueAcross(maintable.frame, self, 10, -290, -360, 10)
+	StdUi:GlueAcross(maintable, self, 10, -290, -360, 10)
 	-- BUTTONS
 	local expenseBtn,incomeBtn
 	-- Button: Income
-	incomeBtn = StdUi:Button(maintable.frame,60,20,"Income")
-	incomeBtn:SetPoint("BOTTOMLEFT", maintable.frame, "TOPLEFT", 0, 30)
+	incomeBtn = StdUi:Button(maintable,60,20,"Income")
+	incomeBtn:SetPoint("BOTTOMLEFT", maintable, "TOPLEFT", 0, 30)
 	incomeBtn:SetScript("OnClick", function(self) 
 			UI.ledgerTab = "income" 
 			self:SetBackdropColor(0.47,0.44,0,1)
@@ -639,7 +639,7 @@ function UI:DrawLedgerTable()
 		end)
 	incomeBtn:SetBackdropColor(0.47,0.44,0,1)
 	-- Button: Expense
-	expenseBtn = StdUi:Button(maintable.frame,60,20,"Expense")
+	expenseBtn = StdUi:Button(maintable,60,20,"Expense")
 	expenseBtn:SetPoint("BOTTOMLEFT", incomeBtn, "BOTTOMRIGHT", 5, 0)
 	expenseBtn:SetScript("OnClick", function(self) 
 			UI.ledgerTab = "expense" 
@@ -649,9 +649,9 @@ function UI:DrawLedgerTable()
 		end)
 	self.ledgerTab = "income" -- default
 	-- Dropdown: Type Select
-	local selectTypedd = StdUi:Dropdown(maintable.frame,100,20,Exgistr.defaultSources ,"All")
+	local selectTypedd = StdUi:Dropdown(maintable,100,20,Exgistr.defaultSources ,"All")
 	maintable.filterSource = "All"
-	selectTypedd:SetPoint("BOTTOMRIGHT", maintable.frame, "TOPRIGHT", 0, 30)
+	selectTypedd:SetPoint("BOTTOMRIGHT", maintable, "TOPRIGHT", 0, 30)
 	selectTypedd.OnValueChanged = function(dropdown, value, text)
 		maintable.filterSource = value
 		UI:RefreshData()
