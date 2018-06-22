@@ -156,18 +156,60 @@ local function CreateMoneyText(parent,label,textSize)
 	return textLabel,text
 end
 
-local function CreateLine(parent,thickness)
-	local line = CreateFrame("Frame",nil,parent)
-	line:SetPoint("CENTER")
-	line:SetSize(1,1)
-	line.line = line:CreateLine(nil,"HIGH",nil,-5)
-	local l = line.line
-	l:SetTexture([[Interface\Buttons\WHITE8X8]])
-	l:SetVertexColor(1, 1, 1, 1)
-	l:SetAlpha(1)
-	l:SetThickness(thickness)
+local function CreateLine(parent)
+	local line = parent:CreateTexture(nil, "OVERLAY")
+	line:SetTexture([[Interface\AddOns\Exgistr\Media\line]])
+	line:SetVertexColor(1,1,1,1)
   return line
 end
+
+-- From TSM
+function Exgistr.DrawLine(line,parent,xFrom, yFrom, xTo, yTo, thickness,startAnchor)
+	assert(xFrom <= xTo)
+	local textureHeight = thickness * 16
+	local xDiff = xTo - xFrom
+	local yDiff = yTo - yFrom
+	local length = math.sqrt(xDiff * xDiff + yDiff * yDiff)
+	local sinValue = -yDiff / length
+	local cosValue = xDiff / length
+	local aspectRatio = length / textureHeight
+	local invAspectRatio = textureHeight / length
+
+	-- calculate and set tex coords
+	local LLx, LLy, ULx, ULy, URx, URy, LRx, LRy
+	if yDiff >= 0 then
+		ULx = sinValue * sinValue
+		ULy = 1 - aspectRatio * sinValue * cosValue
+		LLx = invAspectRatio * sinValue * cosValue
+		LLy = sinValue * sinValue
+		URx = 1 - invAspectRatio * sinValue * cosValue
+		URy = 1 - sinValue * sinValue
+		LRx = 1 - sinValue * sinValue
+		LRy = aspectRatio * sinValue * cosValue
+	else
+		LLx = sinValue * sinValue
+		LLy = -aspectRatio * sinValue * cosValue
+		LRx = 1 + invAspectRatio * sinValue * cosValue
+		LRy = LLx
+		ULx = 1 - LRx
+		ULy = 1 - LLx
+		URy = 1 - LLy
+		URx = ULy
+	end
+	line:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
+
+	-- calculate and set texture anchors
+	local xCenter = (xFrom + xTo) / 2
+	local yCenter = (yFrom + yTo) / 2
+	local halfWidth = (xDiff + invAspectRatio * math.abs(yDiff) + thickness) / 2
+	local halfHeight = (math.abs(yDiff) + invAspectRatio * xDiff + thickness) / 2
+	line:SetPoint("BOTTOMLEFT", parent, startAnchor, xCenter - halfWidth, yCenter - halfHeight)
+	line:SetPoint("TOPRIGHT", parent, startAnchor, xCenter + halfWidth, yCenter + halfHeight)
+
+	return line
+end
+
+
 
 local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
 UI.titlePanel:ClearAllPoints()
@@ -392,7 +434,7 @@ function UI:DrawGraph()
 	graph:SetPoint("BOTTOMRIGHT",self.table,"BOTTOMRIGHT",340,0)
 	graph.warning = StdUi:Label(graph,"",30)
 	graph.warning:SetPoint("CENTER",graph,0,0)
-	local lineCount = 16
+	local lineCount = 20
 	local verticalLines = 7
 	local graphHeight = 180 -- shouldnt change
 	local graphWidth = 315  -- shouldnt change
@@ -433,7 +475,7 @@ function UI:DrawGraph()
 	graph.lines = {}
 	for i=1,lineCount do
 		local line = CreateLine(graph,2)
-		line.line:SetVertexColor(1, 242/255, 9/255, 1)
+		line:SetVertexColor(1, 242/255, 9/255, 1)
 		graph.lines[i] = line
 	end
 
@@ -442,8 +484,8 @@ function UI:DrawGraph()
 			data = {
 				min = number,
 				max = number,
-				values = table with 10 values
-				dates = table with 5 values
+				values = table with lineCount+1 values
+				dates = table with lineCount/2 values
 			}
 		]]
 		if not data then 
@@ -456,20 +498,20 @@ function UI:DrawGraph()
 			self.seplines[i].label:SetText(ShortenNumber(data.min + (i-1) * step))
 		end
 		local v = data.values
-		-- 180 vert
 		local pixelValue = (data.max - data.min) / graphHeight
-		local startPoint = (v[1] - data.min)/pixelValue
-		local endPoint = (v[2]-v[1])/pixelValue
-		self.lines[1].line:SetStartPoint("BOTTOMLEFT",graph,10,20+startPoint)
-		self.lines[1].line:SetEndPoint("BOTTOMLEFT",graph,10+lineWidth,20+startPoint+endPoint)
-		local anchorPoint = endPoint < 0 and "BOTTOMRIGHT" or "TOPRIGHT"
+		local currX = 10
+		local currY = 20 + (v[1] - data.min)/pixelValue
+		local pixelY = (v[2]-v[1])/pixelValue
+		Exgistr.DrawLine(self.lines[1],graph,currX,currY,currX+lineWidth,currY+pixelY,2,"BOTTOMLEFT")
+		currX = currX+lineWidth
+		currY = currY+pixelY
 		for i=2,lineCount do
 			local nextValue = v[i+1] or v[i]
 			local currValue = v[i] or 0
-			endPoint = (nextValue-currValue)/pixelValue
-			self.lines[i].line:SetStartPoint(anchorPoint,self.lines[i-1].line,0,0)
-			self.lines[i].line:SetEndPoint(anchorPoint,self.lines[i-1].line,lineWidth,endPoint)
-			anchorPoint = endPoint < 0 and "BOTTOMRIGHT" or "TOPRIGHT"
+			pixelY = (nextValue-currValue)/pixelValue
+			Exgistr.DrawLine(self.lines[i],graph,currX,currY,currX+lineWidth,currY+pixelY,2,"BOTTOMLEFT")
+			currX = currX+lineWidth
+			currY = currY+pixelY
 		end
 		for i=1,bgCount do
 			self.timeStrings[i]:SetText(data.dates[i])
