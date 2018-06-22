@@ -215,9 +215,8 @@ function UI:InitCharUI()
 			format = 'text', 
 			sortable = false, 
 			events = {
-				OnMouseDown = function(rowFrame, cellFrame, data, cols, row, realRow, column, table, button, ...)
-					local charId = data[realRow].id
-					self.charId = charId
+				OnMouseDown = function(tableFrame, cellFrame,rowFrame, data, colOption, row, button )
+					self.charId = data.id
 					self:RefreshData()
 				end, 
 			},
@@ -230,9 +229,8 @@ function UI:InitCharUI()
 			format = 'money', -- Defines how ScrollTable should display cells in this column - explained below 
 			sortable = false, -- If this is set to false, column will not be sortable
 			events = {
-				OnMouseDown = function(rowFrame, cellFrame, data, cols, row, realRow, column, table, button, ...)
-					local charId = data[realRow].id
-					self.charId = charId
+				OnMouseDown = function(tableFrame, cellFrame,rowFrame, data, colOption, row, button )
+					self.charId = data.id
 					self:RefreshData()
 				end, 
 			},
