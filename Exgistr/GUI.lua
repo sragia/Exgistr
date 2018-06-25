@@ -521,8 +521,9 @@ function UI:DrawGraph()
 
 	function graph:Clear()
 		for i=1,lineCount do
-			self.lines[i].line:SetStartPoint("BOTTOMLEFT",graph,0,0)
-			self.lines[i].line:SetEndPoint("BOTTOMLEFT",graph,0,0)
+			self.lines[i]:ClearAllPoints()
+      self.lines[i]:SetPoint("BOTTOMLEFT", self, 0,0)
+      self.lines[i]:SetPoint("TOPRIGHT", self, "BOTTOMLEFT",0 , 0)
 		end
 		for i=1,verticalLines do
 			self.seplines[i].label:SetText("")
