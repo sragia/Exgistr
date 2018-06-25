@@ -164,8 +164,7 @@ local function CreateLine(parent)
 end
 
 -- From TSM
-function Exgistr.DrawLine(line,parent,xFrom, yFrom, xTo, yTo, thickness,startAnchor)
-	assert(xFrom <= xTo)
+local function ExgDrawLine(line,parent,xFrom, yFrom, xTo, yTo, thickness,startAnchor)
 	local textureHeight = thickness * 16
 	local xDiff = xTo - xFrom
 	local yDiff = yTo - yFrom
@@ -213,14 +212,16 @@ end
 
 local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
 UI.titlePanel:ClearAllPoints()
-UI.titlePanel:SetPoint("BOTTOM", UI, "TOP", 0, -10)
+UI.titlePanel:SetPoint("BOTTOMLEFT", UI, "TOPLEFT", 0, -1)
+UI.titlePanel:SetPoint("BOTTOMRIGHT", UI, "TOPRIGHT", 0, -1)
 
 -- char frame
 function UI:InitCharUI()
 	self.charWindow = self.charWindow or StdUi:PanelWithTitle(UI, 260, 500,'Characters',100,20)
 	local charWindow = self.charWindow
 	charWindow.titlePanel:ClearAllPoints()
-	charWindow.titlePanel:SetPoint("BOTTOM", charWindow, "TOP", 0, -10)
+	charWindow.titlePanel:SetPoint("BOTTOMLEFT", charWindow, "TOPLEFT", 0, -1)
+  charWindow.titlePanel:SetPoint("BOTTOMRIGHT", charWindow, "TOPRIGHT", 0, -1)
 	StdUi:GlueBefore(charWindow,self,1,0,1,0)
 	function charWindow:RefreshData()
 		local allData = Exgistr.GetCharacters()
@@ -502,14 +503,14 @@ function UI:DrawGraph()
 		local currX = 10
 		local currY = 20 + (v[1] - data.min)/pixelValue
 		local pixelY = (v[2]-v[1])/pixelValue
-		Exgistr.DrawLine(self.lines[1],graph,currX,currY,currX+lineWidth,currY+pixelY,2,"BOTTOMLEFT")
+		ExgDrawLine(self.lines[1],graph,currX,currY,currX+lineWidth,currY+pixelY,2,"BOTTOMLEFT")
 		currX = currX+lineWidth
 		currY = currY+pixelY
 		for i=2,lineCount do
 			local nextValue = v[i+1] or v[i]
 			local currValue = v[i] or 0
 			pixelY = (nextValue-currValue)/pixelValue
-			Exgistr.DrawLine(self.lines[i],graph,currX,currY,currX+lineWidth,currY+pixelY,2,"BOTTOMLEFT")
+			ExgDrawLine(self.lines[i],graph,currX,currY,currX+lineWidth,currY+pixelY,2,"BOTTOMLEFT")
 			currX = currX+lineWidth
 			currY = currY+pixelY
 		end
