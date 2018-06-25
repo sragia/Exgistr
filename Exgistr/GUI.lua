@@ -214,6 +214,9 @@ local UI = StdUi:Window(nil, 'Exgistr', 700, 500)
 UI.titlePanel:ClearAllPoints()
 UI.titlePanel:SetPoint("BOTTOMLEFT", UI, "TOPLEFT", 0, -1)
 UI.titlePanel:SetPoint("BOTTOMRIGHT", UI, "TOPRIGHT", 0, -1)
+UI.closeBtn:ClearAllPoints()
+UI.closeBtn:SetPoint("TOPRIGHT", UI.titlePanel, 0, 0)
+UI.closeBtn:SetPoint("BOTTOMRIGHT", UI.titlePanel, 0, 0)
 
 -- char frame
 function UI:InitCharUI()
@@ -794,8 +797,6 @@ end
 
 function Exgistr.InitUI()
 	UI:SetPoint('CENTER',0,0)
-	UI.closeBtn:ClearAllPoints()
-	UI.closeBtn:SetPoint("TOPRIGHT", UI, "TOPRIGHT", -2, -2)
 	UI:InitCharUI()
 	UI:InitMainWindow()
 	UI:SetFrameStrata("HIGH")
