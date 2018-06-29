@@ -252,6 +252,7 @@ function StdUi:ScrollFrame(parent, width, height, scrollChild)
 	panel.scrollFrame = scrollFrame;
 	panel.scrollChild = scrollChild;
 	panel.scrollBar = scrollBar;
+
 	return panel, scrollFrame, scrollChild, scrollBar;
 end
 
@@ -278,5 +279,6 @@ function StdUi:FauxScrollFrame(parent, width, height, displayCount, lineHeight, 
 		self.itemCount = newCount;
 		this.FauxScrollFrameMethods.Update(self.scrollFrame, newCount, displayCount, lineHeight);
 	end
+
 	return panel, scrollFrame, scrollChild, scrollBar;
 end
