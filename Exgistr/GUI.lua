@@ -263,7 +263,7 @@ function UI:InitCharUI()
 			events = {
 				OnMouseDown = function(tableFrame, cellFrame,rowFrame, data, colOption, row, button )
 					self.charId = data.id
-					self:RefreshData()
+					self:RefreshCharData()
 				end, 
 			},
 		},
@@ -277,10 +277,10 @@ function UI:InitCharUI()
 			events = {
 				OnMouseDown = function(tableFrame, cellFrame,rowFrame, data, colOption, row, button )
 					self.charId = data.id
-					self:RefreshData()
+					self:RefreshCharData()
 				end, 
 			},
-		}}, 13, 20)
+		}}, 13, 20)self:RefreshCharData()
 	charTable.scrollFrame:SetClampedToScreen(false)
 	charTable:EnableSelection(true)
 	StdUi:GlueAcross(charTable, charWindow, 10, -60, -10, 45)
@@ -302,7 +302,7 @@ function UI:InitCharUI()
 		charWindow.selectedRealm = value
 		self.charId = nil
 		charWindow:RefreshData()
-		self:RefreshData()
+		self:RefreshAccData()
 	end
 
 	-- Realm Gold
@@ -434,6 +434,7 @@ end
 function UI:DrawGraph()
 	self.graph = self.graph or StdUi:Panel(self,330,100)
 	local graph = self.graph
+	graph.data = {}
 	graph:SetPoint("TOPLEFT",self.realmtotalPanel,"BOTTOMLEFT",0,-40)
 	graph:SetPoint("BOTTOMRIGHT",self.table,"BOTTOMRIGHT",340,0)
 	graph.warning = StdUi:Label(graph,"",30)
@@ -552,10 +553,8 @@ function UI:DrawGraph()
 		local updateTable = {values = {}, dates = {}}
 		local dateNow = date("*t", time())
 		updateTable.dates[bgCount] = string.format("%02d%s%02d",dateNow[timekeys[1]],timekeys[2],dateNow[timekeys[3]])
-		updateTable.max = unitGold / 10000
 		updateTable.values[pointCount] = unitGold / 10000
 		updateTable.values[pointCount - 1] = unitGold / 10000
-		updateTable.min = updateTable.values[pointCount - 1]
 		-- Select Data
 		local timeLimit = timeLimits[self.selectedTimeFrame]
 		local timeMin = time() - timeLimit
@@ -578,15 +577,11 @@ function UI:DrawGraph()
 			local ledgeTime = time(data.date)
 			if ledgeTime > (timeCurr - timeStep*idx) then
 				updateTable.values[pointCount-idx] = updateTable.values[pointCount-idx] - data.amount / 10000
-				updateTable.min = updateTable.min > updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.min
-				updateTable.max = updateTable.max < updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.max
 			else
 				for b = idx+1,pointCount do
 					if ledgeTime > (timeCurr - timeStep*b) then
 						idx = b
 						updateTable.values[pointCount-idx] = updateTable.values[pointCount - idx + 1] - data.amount / 10000
-						updateTable.min = updateTable.min > updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.min
-						updateTable.max = updateTable.max < updateTable.values[pointCount-idx] and updateTable.values[pointCount-idx] or updateTable.max
 						break;
 					else
 						updateTable.values[pointCount-b] = updateTable.values[pointCount - b + 1]
@@ -595,6 +590,13 @@ function UI:DrawGraph()
 			end
 			--if idx >= 10 then break end -- KMS hack
 		end
+		local min,max = updateTable.values[1],updateTable.values[1]
+		for i=2,pointCount do
+			min = min > updateTable.values[i] and updateTable.values[i] or min
+			max = max < updateTable.values[i] and updateTable.values[i] or max
+		end
+		updateTable.min = min
+		updateTable.max = max
 		self:Update(updateTable)
 	end
 
@@ -652,7 +654,7 @@ function UI:DrawLedgerTable()
 				compareSort = function(self,rowA,rowB,sortBy)
 					local a = self:GetRow(rowA)
 					local b = self:GetRow(rowB)
-					local column = self.cols[sortBy]
+					local column = self.columns[sortBy]
 					local direction = column.sort or column.defaultSort or 'asc';
 					if direction:lower() == 'asc' then
 						return a.dateTime > b.dateTime
@@ -680,7 +682,7 @@ function UI:DrawLedgerTable()
 			UI.ledgerTab = "income" 
 			self:SetBackdropColor(0.47,0.44,0,1)
 			StdUi:ApplyBackdrop(expenseBtn)
-			UI:RefreshData()
+			UI:RefreshCharData()
 		end)
 	incomeBtn:SetBackdropColor(0.47,0.44,0,1)
 	-- Button: Expense
@@ -690,7 +692,7 @@ function UI:DrawLedgerTable()
 			UI.ledgerTab = "expense" 
 			self:SetBackdropColor(0.47,0.44,0,1)
 			StdUi:ApplyBackdrop(incomeBtn)
-			UI:RefreshData()
+			UI:RefreshCharData()
 		end)
 	self.ledgerTab = "income" -- default
 	-- Dropdown: Type Select
@@ -699,7 +701,7 @@ function UI:DrawLedgerTable()
 	selectTypedd:SetPoint("BOTTOMRIGHT", maintable, "TOPRIGHT", 0, 30)
 	selectTypedd.OnValueChanged = function(dropdown, value, text)
 		maintable.filterSource = value
-		UI:RefreshData()
+		UI:RefreshCharData()
 	end
 	maintable.selectedtype = selectTypedd
 end
@@ -715,35 +717,40 @@ function UI:InitMainWindow()
 	self:DrawGraph()
 end
 
-function UI:RefreshData()
+function UI:RefreshCharData()
 	if self.charId then
-		local charData = Exgistr.GetCharacter(self.charId)
+		local charData 
+		if self.charData[self.charId] then
+			charData = self.charData[self.charId].data
+		else
+			charData = Exgistr.GetCharacter(self.charId)
+			self.charData[self.charId] = {data = charData, filter = {},stats = {}}
+		end
 		local expenses,income,lastWeek,lastMonth = 0,0,0,0
-
 		-- Ledger Table
 		local ledgerData = charData.ledger
 		local filterSource = self.table.filterSource
 		local data = {}
 		for tId,d in ipairs(ledgerData) do
-			--
-			if d.amount < 0 then
-				expenses = expenses + math.abs(d.amount)
-				if self.ledgerTab == "expense" and (filterSource == d.type or filterSource == "All") then
-					table.insert(data,{type = d.type,dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Expense", amount = math.abs(d.amount)})
+				--
+				if d.amount < 0 then
+					expenses = expenses + math.abs(d.amount)
+					if self.ledgerTab == "expense" and (filterSource == d.type or filterSource == "All") then
+						table.insert(data,{type = d.type,dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Expense", amount = math.abs(d.amount)})
+					end
+				else
+					if self.ledgerTab == "income" and (filterSource == d.type or filterSource == "All") then
+						table.insert(data,{type = d.type, dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Income", amount = d.amount})
+					end
+					income = income + d.amount
 				end
-			else
-				if self.ledgerTab == "income" and (filterSource == d.type or filterSource == "All") then
-					table.insert(data,{type = d.type, dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Income", amount = d.amount})
+				-- 
+				if IsDateInLimit(d.date,"week") then
+					lastWeek = lastWeek + d.amount
+					lastMonth = lastMonth + d.amount
+				elseif IsDateInLimit(d.date,"month") then
+					lastMonth = lastMonth + d.amount
 				end
-				income = income + d.amount
-			end
-			-- 
-			if IsDateInLimit(d.date,"week") then
-				lastWeek = lastWeek + d.amount
-				lastMonth = lastMonth + d.amount
-			elseif IsDateInLimit(d.date,"month") then
-				lastMonth = lastMonth + d.amount
-			end
 		end
 		self.table:SetData(data)
 		self.table:SortData(2)
@@ -761,6 +768,9 @@ function UI:RefreshData()
 		totalPanel.incomeTotal:SetMoneyString(income)
 		totalPanel.profitTotal:SetMoneyString(income-expenses)
 	end
+end
+
+function UI:RefreshAccData()
 	local allData = Exgistr.GetCharacterLedgers()
 	local accThisWeek,realmThisWeek = 0,0
 	local accTotal,realmTotal = 0,0
@@ -795,8 +805,11 @@ function UI:RefreshData()
 	self.graph:RefreshData()
 end
 
+
+
 function Exgistr.InitUI()
 	UI:SetPoint('CENTER',0,0)
+	UI.charData = {}
 	UI:InitCharUI()
 	UI:InitMainWindow()
 	UI:SetFrameStrata("HIGH")
@@ -805,7 +818,9 @@ end
 
 function Exgistr.ShowUI()
 	UI.charWindow:RefreshData()
-	UI:RefreshData()
+	UI:RefreshCharData()
+	UI:RefreshAccData()
+	--UI:RefreshData()
 	UI:Show()
 end
 
