@@ -23,6 +23,14 @@ local function spairs(t, order)
   end
 end
 
+local filterTimeNames = {
+	year = "Year",
+	month = "Month",
+	week = "Week",
+	day = "Day",
+	hour = "Hour"
+	}
+
 local ShortenNumber = function(number)
     if type(number) ~= "number" then
         number = tonumber(number)
@@ -72,6 +80,7 @@ local timeLimits = {
 	["day"] = 86400,
 	["week"] = 604800,
 	["month"] = 18144000,
+	["year"] = 31536000,
 }
 local function IsDateInLimit(dateCheck,limit)
 	local timeNow = time()
@@ -325,7 +334,7 @@ end
 function UI:DrawCharacterPanel()
 	self.charPanel = self.charPanel or StdUi:Panel(self,330,100)
 	local charPanel = self.charPanel
-	StdUi:GlueTop(charPanel,self,10,-20,'LEFT')
+	StdUi:GlueTop(charPanel,self,10,-25,'LEFT')
 	-- Char Name
 	local charName = charPanel.charName or StdUi:FontString(charPanel,"Name")
 	charPanel.charName = charName
@@ -336,20 +345,22 @@ function UI:DrawCharacterPanel()
 	charPanel.currGold = currGold
 	StdUi:GlueTop(currGoldLabel,charName,0,-30,'LEFT')
 	StdUi:GlueAfter(currGold,currGoldLabel,5,0,5,0)
-	-- Made Last Week
-	local goldLastWeekLabel,goldLastWeek = CreateMoneyText(charPanel,"Gold This Week:",13)
-	charPanel.goldLastWeek = goldLastWeek
-	StdUi:GlueTop(goldLastWeekLabel,currGoldLabel,0,-18,'LEFT')
-	StdUi:GlueAfter(goldLastWeek,goldLastWeekLabel,5,0,5,0)
-	-- Made Last Month
-	local goldLastMonthLabel,goldLastMonth = CreateMoneyText(charPanel,"Gold This Month:",13)
-	charPanel.goldLastMonth = goldLastMonth
-	StdUi:GlueTop(goldLastMonthLabel,goldLastWeekLabel,0,-18,'LEFT')
-	StdUi:GlueAfter(goldLastMonth,goldLastMonthLabel,5,0,5,0)
+	-- Made timefraem
+	local goldMadeLabel,goldMade = CreateMoneyText(charPanel,"Gold This Week:",13)
+	charPanel.goldMade = goldMade
+	charPanel.goldMadeLabel = goldMadeLabel
+	StdUi:GlueTop(goldMadeLabel,currGoldLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldMade,goldMadeLabel,5,0,5,0)
+	-- Made Avg
+	local goldAverageLabel,goldAverage = CreateMoneyText(charPanel,"Average per day:",13)
+	charPanel.goldAverage = goldAverage
+	charPanel.goldAverageLabel = goldAverageLabel
+	StdUi:GlueTop(goldAverageLabel,goldMadeLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldAverage,goldAverageLabel,5,0,5,0)
 	-- TEST
 	currGold:SetMoneyString(123456)
-	goldLastWeek:SetMoneyString(123456)
-	goldLastMonth:SetMoneyString(123456)
+	goldMade:SetMoneyString(123456)
+	goldAverage:SetMoneyString(123456)
 end
 
 -- Totals for character
@@ -393,14 +404,15 @@ function UI:DrawAccountTotalPanel()
 	StdUi:GlueTop(currGoldLabel,acctotalsString,0,-30,'LEFT')
 	StdUi:GlueAfter(currGold,currGoldLabel,5,0,5,0)
 	-- Made Last Week
-	local goldLastWeekLabel,goldLastWeek = CreateMoneyText(acctotalPanel,"Gold This Week:",13)
-	acctotalPanel.goldLastWeek = goldLastWeek
-	StdUi:GlueTop(goldLastWeekLabel,currGoldLabel,0,-18,'LEFT')
-	StdUi:GlueAfter(goldLastWeek,goldLastWeekLabel,5,0,5,0)
+	local goldMadeLabel,goldMade = CreateMoneyText(acctotalPanel,"Gold This Week:",13)
+	acctotalPanel.goldMade = goldMade
+	acctotalPanel.goldMadeLabel = goldMadeLabel
+	StdUi:GlueTop(goldMadeLabel,currGoldLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldMade,goldMadeLabel,5,0,5,0)
 	-- Made Last Month
 	local goldAvgLabel,goldAvg = CreateMoneyText(acctotalPanel,"Average per Day :",13)
 	acctotalPanel.goldAvg = goldAvg
-	StdUi:GlueTop(goldAvgLabel,goldLastWeekLabel,0,-18,'LEFT')
+	StdUi:GlueTop(goldAvgLabel,goldMadeLabel,0,-18,'LEFT')
 	StdUi:GlueAfter(goldAvg,goldAvgLabel,5,0,5,0)
 end
 
@@ -419,14 +431,15 @@ function UI:DrawRealmTotalPanel()
 	StdUi:GlueTop(currGoldLabel,realmtotalsString,0,-30,'LEFT')
 	StdUi:GlueAfter(currGold,currGoldLabel,5,0,5,0)
 	-- Made Last Week
-	local goldLastWeekLabel,goldLastWeek = CreateMoneyText(realmtotalPanel,"Gold Last Week:",13)
-	realmtotalPanel.goldLastWeek = goldLastWeek
-	StdUi:GlueTop(goldLastWeekLabel,currGoldLabel,0,-18,'LEFT')
-	StdUi:GlueAfter(goldLastWeek,goldLastWeekLabel,5,0,5,0)
+	local goldMadeLabel,goldMade = CreateMoneyText(realmtotalPanel,"Gold Last Week:",13)
+	realmtotalPanel.goldMade = goldMade
+	realmtotalPanel.goldMadeLabel = goldMadeLabel
+	StdUi:GlueTop(goldMadeLabel,currGoldLabel,0,-18,'LEFT')
+	StdUi:GlueAfter(goldMade,goldMadeLabel,5,0,5,0)
 	-- Made Last Month
 	local goldAvgLabel,goldAvg = CreateMoneyText(realmtotalPanel,"Average per Day :",13)
 	realmtotalPanel.goldAvg = goldAvg
-	StdUi:GlueTop(goldAvgLabel,goldLastWeekLabel,0,-18,'LEFT')
+	StdUi:GlueTop(goldAvgLabel,goldMadeLabel,0,-18,'LEFT')
 	StdUi:GlueAfter(goldAvg,goldAvgLabel,5,0,5,0)
 end
 
@@ -672,7 +685,7 @@ function UI:DrawLedgerTable()
 			},}, 9, 20);
 	local maintable = self.table
 	maintable.scrollFrame:SetClampedToScreen(false)
-	StdUi:GlueAcross(maintable, self, 10, -290, -360, 10)
+	StdUi:GlueAcross(maintable, self, 10, -295, -360, 5)
 	-- BUTTONS
 	local expenseBtn,incomeBtn
 	-- Button: Income
@@ -708,31 +721,51 @@ end
 
 
 function UI:InitMainWindow()
+	self.filterTime = "year"
 	self:DrawCharacterPanel()
 	self:DrawCharTotalPanel()
-	self:DrawAccountTotalPanel()
 	self:DrawLedgerTable()
 	self:DrawAccountTotalPanel()
 	self:DrawRealmTotalPanel()
 	self:DrawGraph()
+	local tfOpt = {
+		{text = "Year", value = "year"},
+		{text = "Month", value = "month"},
+		{text = "Week", value = "week"},
+		{text = "Day", value = "day"},
+		{text = "Hour", value = "hour"}
+	}
+	local timeframe = StdUi:Dropdown(self, 100, 20, tfOpt, "year")
+	timeframe:SetPoint("TOPRIGHT",-25,-3)
+	timeframe.OnValueChanged = function(dropdown, value, text)
+		UI.filterTime = value
+		UI:RefreshCharData()
+		UI:RefreshAccData()
+	end
+	local label = StdUi:Label(timeframe, "Time Frame:")
+	label:SetPoint("RIGHT",timeframe,"LEFT",-2,0)
 end
 
 function UI:RefreshCharData()
 	if self.charId then
 		local charData 
-		if self.charData[self.charId] then
-			charData = self.charData[self.charId].data
+		if self.charData[self.charId] and self.charData[self.charId][self.filterTime]  then
+			charData = self.charData[self.charId][self.filterTime].data
 		else
-			charData = Exgistr.GetCharacter(self.charId)
-			self.charData[self.charId] = {data = charData, filter = {},stats = {}}
+			charData = Exgistr.GetCharacterInfo(self.charId) 
+			charData.ledger = Exgistr.SelectLedgerData(self.charId,{key = "date", value = time() - timeLimits[self.filterTime],compare = ">"})
+			self.charData[self.charId] = self.charData[self.charId] or {}
+			self.charData[self.charId][self.filterTime] = {data = charData, filter = {},stats = {}}
 		end
-		local expenses,income,lastWeek,lastMonth = 0,0,0,0
+		local expenses,income= 0,0
+		local mindate
 		-- Ledger Table
 		local ledgerData = charData.ledger
 		local filterSource = self.table.filterSource
 		local data = {}
 		for tId,d in ipairs(ledgerData) do
 				--
+				if not mindate then mindate = d.date end
 				if d.amount < 0 then
 					expenses = expenses + math.abs(d.amount)
 					if self.ledgerTab == "expense" and (filterSource == d.type or filterSource == "All") then
@@ -744,24 +777,21 @@ function UI:RefreshCharData()
 					end
 					income = income + d.amount
 				end
-				-- 
-				if IsDateInLimit(d.date,"week") then
-					lastWeek = lastWeek + d.amount
-					lastMonth = lastMonth + d.amount
-				elseif IsDateInLimit(d.date,"month") then
-					lastMonth = lastMonth + d.amount
-				end
 		end
 		self.table:SetData(data)
 		self.table:SortData(2)
 		-- Character Panel
+		local days = math.ceil((time()-time(mindate))/86400)
+		days = days > 0 and days or 1
 		local charPanel = self.charPanel
 		local r,g,b = GetClassColor(charData.class)
+		local profit = income-expenses
 		charPanel.charName:SetText(charData.name)
 		charPanel.charName:SetTextColor(r, g, b, 1)
 		charPanel.currGold:SetMoneyString(charData.current)
-		charPanel.goldLastWeek:SetMoneyString(lastWeek)
-		charPanel.goldLastMonth:SetMoneyString(lastMonth)
+		charPanel.goldMade:SetMoneyString(profit)
+		charPanel.goldMadeLabel:SetText("Gold Made This ".. filterTimeNames[self.filterTime])
+		charPanel.goldAverage:SetMoneyString(profit/days)
 		-- TOTALS
 		local totalPanel = self.totalPanel
 		totalPanel.expenseTotal:SetMoneyString(expenses)
@@ -771,18 +801,18 @@ function UI:RefreshCharData()
 end
 
 function UI:RefreshAccData()
-	local allData = Exgistr.GetCharacterLedgers()
+	local allData = Exgistr.GetCharacterLedgers({key = "date", value = time() - timeLimits[self.filterTime],compare = ">"})
 	local accThisWeek,realmThisWeek = 0,0
 	local accTotal,realmTotal = 0,0
 	local selectedRealm = self.charWindow.selectedRealm or GetRealmName()
+	local mindate
 	for realm,ledgers in pairs(allData) do
 		for i,l in ipairs(ledgers) do
-			if IsDateInLimit(l.date,"week") then
-				if realm == selectedRealm then
-					realmThisWeek = realmThisWeek + l.amount
-				end
-				accThisWeek = accThisWeek + l.amount
+			mindate = mindate and (mindate < time(l.date) and mindate) or time(l.date)
+			if realm == selectedRealm then
+				realmThisWeek = realmThisWeek + l.amount
 			end
+			accThisWeek = accThisWeek + l.amount
 
 			if realm == selectedRealm then
 				realmTotal = realmTotal + l.amount
@@ -793,14 +823,16 @@ function UI:RefreshAccData()
 
 	local initTime = Exgistr.GetInitTime()
 	local timeNow = time()
-	local days = math.ceil((timeNow - initTime)/86400)
+	local days = math.ceil((timeNow - mindate)/86400)
 	local avgTotal = accTotal / days
 	local avgRealm = realmTotal / days
 	self.acctotalPanel.currGold:SetMoneyString(self.totalGold)
-	self.acctotalPanel.goldLastWeek:SetMoneyString(accThisWeek)
+	self.acctotalPanel.goldMade:SetMoneyString(accThisWeek)
+	self.acctotalPanel.goldMadeLabel:SetText("Gold Made This ".. filterTimeNames[self.filterTime])
 	self.acctotalPanel.goldAvg:SetMoneyString(avgTotal)
 	self.realmtotalPanel.currGold:SetMoneyString(self.realmGold)
-	self.realmtotalPanel.goldLastWeek:SetMoneyString(realmThisWeek)
+	self.realmtotalPanel.goldMade:SetMoneyString(realmThisWeek)
+	self.realmtotalPanel.goldMadeLabel:SetText("Gold Made This ".. filterTimeNames[self.filterTime])
 	self.realmtotalPanel.goldAvg:SetMoneyString(avgRealm)
 	self.graph:RefreshData()
 end

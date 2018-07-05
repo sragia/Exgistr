@@ -132,6 +132,19 @@ function Exgistr.SelectLedgerData(charId,filter)
 	return ret
 end
 
+function Exgistr.GetCharacterInfo(charId) 
+	if not db[charId] then return end
+	local char = db[charId]
+	local t = {
+		name = char.name,
+		realm = char.realm,
+		class = char.class,
+		current = char.current,
+		startData = char.startData,
+	}
+	return t
+end
+
 
 -- LEDGER
 function Exgistr.AddTransaction(t,name,realm)
@@ -159,12 +172,20 @@ end
 function Exgistr.GetLedgerData(id)
 	return db[id].ledger
 end
-function Exgistr.GetCharacterLedgers()
+function Exgistr.GetCharacterLedgers(filter)
 	local ret = {}
 	for id,char in pairs(db) do
 		ret[char.realm] = ret[char.realm] or {}
 		for i,l in ipairs(char.ledger) do
-			table.insert(ret[char.realm],l)
+			if filter and l[filter.key] then
+				if filter.key == "date" and compare(time(l[filter.key]),filter.value,filter.compare) then
+					table.insert(ret[char.realm],l)
+				elseif filter.key ~= "date" and compare(l[filter.key],filter.value,filter.compare) then
+					table.insert(ret[char.realm],l)
+				end
+			else
+				table.insert(ret[char.realm],l)
+			end
 		end
 	end
 	return ret
