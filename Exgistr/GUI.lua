@@ -312,10 +312,12 @@ function UI:InitCharUI()
   StdUi:GlueTop(realmSelect,charWindow,10,-15,"LEFT")
   charWindow.selectedRealm = selectedRealm
   realmSelect.OnValueChanged = function(dropdown, value, text)
-    charWindow.selectedRealm = value
-    self.charId = nil
-    charWindow:RefreshData()
-    self:RefreshAccData()
+    if charWindow.selectedRealm ~= value then
+      charWindow.selectedRealm = value
+      self.charId = nil
+      charWindow:RefreshData()
+      self:RefreshAccData()
+    end
   end
 
   -- Realm Gold
@@ -628,8 +630,10 @@ function UI:DrawGraph()
   timeframedd:SetPoint("BOTTOMLEFT", graph, "TOPLEFT", 0, 5)
   graph.selectedTimeFrame = "month"
   timeframedd.OnValueChanged = function(dropdown, value, text)
-    graph.selectedTimeFrame = value
-    graph:RefreshData()
+    if graph.selectedTimeFrame ~= value then
+      graph.selectedTimeFrame = value
+      graph:RefreshData()
+    end
   end
   graph.timeframe = timeframedd
   -- GRAPH: select char (dropdown)
@@ -644,8 +648,10 @@ function UI:DrawGraph()
   local selectChardd = StdUi:Dropdown(graph,100,20,scOpt,"all")
   selectChardd:SetPoint("BOTTOMRIGHT", graph, "TOPRIGHT", 0, 5)
   selectChardd.OnValueChanged = function(dropdown, value, text)
-    graph.selectedCharacter = value
-    graph:RefreshData()
+    if graph.selectedCharacter ~= value then
+      graph.selectedCharacter = value
+      graph:RefreshData()
+    end
   end
   graph.charSelect = selectChardd
 end
@@ -717,8 +723,10 @@ function UI:DrawLedgerTable()
   maintable.filterSource = "All"
   selectTypedd:SetPoint("BOTTOMRIGHT", maintable, "TOPRIGHT", 0, 30)
   selectTypedd.OnValueChanged = function(dropdown, value, text)
-    maintable.filterSource = value
-    UI:RefreshCharData()
+    if maintable.filterSource ~= value then
+      maintable.filterSource = value
+      UI:RefreshCharData()
+    end
   end
   maintable.selectedtype = selectTypedd
 end
@@ -742,9 +750,11 @@ function UI:InitMainWindow()
   local timeframe = StdUi:Dropdown(self, 100, 20, tfOpt, "year")
   timeframe:SetPoint("TOPRIGHT",-25,-3)
   timeframe.OnValueChanged = function(dropdown, value, text)
-    UI.filterTime = value
-    UI:RefreshCharData()
-    UI:RefreshAccData()
+    if UI.filterTime ~= value then
+      UI.filterTime = value
+      UI:RefreshCharData()
+      UI:RefreshAccData()
+    end
   end
   local label = StdUi:Label(timeframe, "Time Frame:")
   label:SetPoint("RIGHT",timeframe,"LEFT",-2,0)
