@@ -76,7 +76,7 @@ local function PLAYER_MONEY()
 		local tId = Exgistr.AddTransaction({
 			amount = diff,
 			type = transType,
-			date = date("*t", time()),
+			date = time()--date("*t", time()),
 		})
 		lastTransaction = {id = tId, time = GetTime()}
 	end
@@ -107,7 +107,7 @@ function f:OnEvent(event,...)
 		f:UnregisterEvent("ADDON_LOADED")
 	end
 	if event == "PLAYER_LOGOUT" then
-		ExgistrDB.db = Exgistr.db
+		ExgistrDB.db = Exgistr.GetDB()
 		ExgistrDB.config = Exgistr.config
 	end
 end

@@ -31,6 +31,11 @@ local filterTimeNames = {
 	hour = "Hour"
 	}
 
+local function CheckHuge(number)
+  return number == math.huge
+end
+
+
 local ShortenNumber = function(number)
     if type(number) ~= "number" then
         number = tonumber(number)
@@ -84,9 +89,8 @@ local timeLimits = {
 }
 local function IsDateInLimit(dateCheck,limit)
 	local timeNow = time()
-	local dateTime = time(dateCheck)
 	if timeLimits[limit] then
-		return (timeNow - timeLimits[limit]) <= dateTime
+		return (timeNow - timeLimits[limit]) <= dateCheck
 	end
 	return false
 end
@@ -576,18 +580,18 @@ function UI:DrawGraph()
 			self:Clear()
 			return
 		end
-		table.sort(ledgerData,function(a,b) return time(a.date) > time(b.date) end)
+		table.sort(ledgerData,function(a,b) return a.date > b.date end)
 		-- Filter Data
 		local idx = 1
 		local timeCurr = time()
-		local elapsedTime = timeCurr - time(ledgerData[#ledgerData].date)
+		local elapsedTime = timeCurr - ledgerData[#ledgerData].date
 		local timeStep = elapsedTime / (pointCount - 2)
 		for i=1,bgCount-1 do 
 			local timeDate = date("*t",timeCurr-timeStep*i*2) 
 			updateTable.dates[bgCount-i] = string.format("%02d%s%02d",timeDate[timekeys[1]],timekeys[2],timeDate[timekeys[3]])
 		end
 		for i,data in ipairs(ledgerData) do
-			local ledgeTime = time(data.date)
+			local ledgeTime = data.date
 			if ledgeTime > (timeCurr - timeStep*idx) then
 				updateTable.values[pointCount-idx] = updateTable.values[pointCount-idx] - data.amount / 10000
 			else
@@ -769,25 +773,27 @@ function UI:RefreshCharData()
 				if d.amount < 0 then
 					expenses = expenses + math.abs(d.amount)
 					if self.ledgerTab == "expense" and (filterSource == d.type or filterSource == "All") then
-						table.insert(data,{type = d.type,dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Expense", amount = math.abs(d.amount)})
+						table.insert(data,{type = d.type,dateTime = d.date, date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Expense", amount = math.abs(d.amount)})
 					end
 				else
-					if self.ledgerTab == "income" and (filterSource == d.type or filterSource == "All") then
-						table.insert(data,{type = d.type, dateTime = time(d.date), date = string.format("%i/%i/%i %02d:%02d", d.date.year,d.date.month,d.date.day,d.date.hour,d.date.min),transType =  "Income", amount = d.amount})
+          if self.ledgerTab == "income" and (filterSource == d.type or filterSource == "All") then
+            local date = date("*t",d.date)
+						table.insert(data,{type = d.type, dateTime = d.date, date = string.format("%i/%i/%i %02d:%02d", date.year,date.month,date.day,date.hour,date.min),transType =  "Income", amount = d.amount})
 					end
 					income = income + d.amount
 				end
 		end
 		self.table:SetData(data)
 		self.table:SortData(2)
-		-- Character Panel
-		local days = math.ceil((time()-time(mindate))/86400)
+    -- Character Panel
+    mindate = mindate or time()
+		local days = math.ceil((time()-mindate)/86400)
 		days = days > 0 and days or 1
 		local charPanel = self.charPanel
 		local r,g,b = GetClassColor(charData.class)
-		local profit = income-expenses
+    local profit = income-expenses
 		charPanel.charName:SetText(charData.name)
-		charPanel.charName:SetTextColor(r, g, b, 1)
+    charPanel.charName:SetTextColor(r, g, b, 1)
 		charPanel.currGold:SetMoneyString(charData.current)
 		charPanel.goldMade:SetMoneyString(profit)
 		charPanel.goldMadeLabel:SetText("Gold Made This ".. filterTimeNames[self.filterTime])
@@ -808,7 +814,7 @@ function UI:RefreshAccData()
 	local mindate
 	for realm,ledgers in pairs(allData) do
 		for i,l in ipairs(ledgers) do
-			mindate = mindate and (mindate < time(l.date) and mindate) or time(l.date)
+			mindate = mindate and (mindate < l.date and mindate) or l.date
 			if realm == selectedRealm then
 				realmThisWeek = realmThisWeek + l.amount
 			end
@@ -820,17 +826,16 @@ function UI:RefreshAccData()
 			accTotal = accTotal + l.amount
 		end
 	end
-
-	local initTime = Exgistr.GetInitTime()
+  mindate = mindate or time()
 	local timeNow = time()
 	local days = math.ceil((timeNow - mindate)/86400)
-	local avgTotal = accTotal / days
-	local avgRealm = realmTotal / days
-	self.acctotalPanel.currGold:SetMoneyString(self.totalGold)
-	self.acctotalPanel.goldMade:SetMoneyString(accThisWeek)
+	local avgTotal = accTotal > 0 and accTotal / days or 0
+  local avgRealm = realmTotal > 0 and realmTotal / days or 0
+  self.acctotalPanel.currGold:SetMoneyString(self.totalGold)
+  self.acctotalPanel.goldMade:SetMoneyString(accThisWeek)
 	self.acctotalPanel.goldMadeLabel:SetText("Gold Made This ".. filterTimeNames[self.filterTime])
 	self.acctotalPanel.goldAvg:SetMoneyString(avgTotal)
-	self.realmtotalPanel.currGold:SetMoneyString(self.realmGold)
+  self.realmtotalPanel.currGold:SetMoneyString(self.realmGold)
 	self.realmtotalPanel.goldMade:SetMoneyString(realmThisWeek)
 	self.realmtotalPanel.goldMadeLabel:SetText("Gold Made This ".. filterTimeNames[self.filterTime])
 	self.realmtotalPanel.goldAvg:SetMoneyString(avgRealm)

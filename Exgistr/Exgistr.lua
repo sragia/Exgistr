@@ -16,7 +16,7 @@ local LEDGER_ROW_DEFAULT = {
 	values = {
 		amount = 0,
 		type = "",
-		date = {},	
+		date = 0,	
 	},
 }
 
@@ -81,14 +81,14 @@ function Exgistr.SetupCharacter()
 			current = Exgistr.CurrentMoney,
 			startData = {
 				gold = Exgistr.CurrentMoney,
-				date = date("*t", time())
+				date = time()
 			},
 		})
 	elseif db[id].current ~= Exgistr.CurrentMoney then
 		Exgistr.AddTransaction({
 				amount = Exgistr.CurrentMoney-db[id].current,
 				type = "Unknown",
-				date = date("*t", time()),
+				date = time(),--date("*t", time()),
 			})
 		db[id].current = Exgistr.CurrentMoney
 	end
@@ -110,9 +110,7 @@ function Exgistr.SelectLedgerData(charId,filter)
 		for id,char in pairs(db) do
 			for i,data in ipairs(char.ledger) do
 				if data[filter.key] then
-					if filter.key == "date" and compare(time(data[filter.key]),filter.value,filter.compare) then
-						table.insert(ret,data)
-					elseif filter.key ~= "date" and compare(data[filter.key],filter.value,filter.compare) then
+          if compare(data[filter.key],filter.value,filter.compare) then
 						table.insert(ret,data)
 					end
 				end
@@ -121,9 +119,7 @@ function Exgistr.SelectLedgerData(charId,filter)
 	else
 		for i,data in ipairs(db[charId].ledger) do
 			if data[filter.key] then
-				if filter.key == "date" and compare(time(data[filter.key]),filter.value,filter.compare) then
-					table.insert(ret,data)
-				elseif filter.key ~= "date" and compare(data[filter.key],filter.value,filter.compare) then
+				if compare(data[filter.key],filter.value,filter.compare) then
 					table.insert(ret,data)
 				end
 			end
@@ -178,9 +174,7 @@ function Exgistr.GetCharacterLedgers(filter)
 		ret[char.realm] = ret[char.realm] or {}
 		for i,l in ipairs(char.ledger) do
 			if filter and l[filter.key] then
-				if filter.key == "date" and compare(time(l[filter.key]),filter.value,filter.compare) then
-					table.insert(ret[char.realm],l)
-				elseif filter.key ~= "date" and compare(l[filter.key],filter.value,filter.compare) then
+				if compare(l[filter.key],filter.value,filter.compare) then
 					table.insert(ret[char.realm],l)
 				end
 			else
@@ -236,9 +230,29 @@ local function CheckDB()
 	db = t
 end
 
+local function ModernizeDB()
+  local t = db
+  for id,char in pairs(db) do
+    if type(char.startData.date) == "table" then
+      t[id].startData.date = time(char.startData.date)
+    end
+    for i,l in ipairs(char.ledger) do
+      if type(l.date) == "table" then
+        t[id].ledger[i].date = time(l.date)
+      end
+    end
+  end
+  db = t
+end
+
 function Exgistr.InitDB()
-	db = Exgistr.db
+  db = Exgistr.db
+  ModernizeDB()
 	CheckDB()
+end
+
+function Exgistr.GetDB()
+  return db
 end
 
 function Exgistr.ClearDB()
