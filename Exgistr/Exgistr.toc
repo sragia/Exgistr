@@ -16,4 +16,4 @@ Libs\StdUi\StdUi.xml
 init.lua
 Exgistr.lua
 EventHandler.lua
-GUI.lua
+GUI\GUI.xml
